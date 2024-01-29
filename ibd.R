@@ -5,24 +5,17 @@ rm(list = ls())
 getwd()
 
 
-#Carsurvqueens = mergePops(getQueen(age0$Mel))
-#IBD0<-apply(getIbdHaplo(Carsurvqueens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
-IBDalive<-sapply(seq(1,length(IBD0),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
-#function that looks at IBDalive and returns how many values are 0
-Carsurviving<-sum(IBDalive==0)
-
-
 # Define functions
 maintainIrelandSize <- function(age0 = NULL, age1 = NULL) {
   if ((nColonies(age0) + nColonies(age1)) > IrelandSize) { # check if the sum of all colonies is greater than population size
-    IDsplits <- getId(age0$Mel)[hasSplit(age0$Mel)] # get the IDs of age 0 that are splits
-    splits0 <- pullColonies(age0$Mel, ID = IDsplits) # pull the splits out of age 0
+    IDsplits <- getId(age0)[hasSplit(age0)] # get the IDs of age 0 that are splits
+    splits0 <- pullColonies(age0, ID = IDsplits) # pull the splits out of age 0
     age0split <- splits0$pulled # create an object for age 0 splits
     age0swarm <- splits0$remnant # create an object for swarms and superseded colonies
     splitsI<-pullColonies(age0split, ID=IdImportColonies) #pull the imports out of split
     age0splitImport <- splitsI$pulled # create an object for imported splits
     age0splitMel <- splitsI$remnant # create an object for non imported splits
-    age0needed <- IrelandSize - nColonies(age1$Mel) # calculate the number of age 0 colonies that are needed to fill up the apiary
+    age0needed <- IrelandSize - nColonies(age1) # calculate the number of age 0 colonies that are needed to fill up the apiary
     if (age0needed <= nColonies(age0swarm)) { # check if the number of age 0 colonies needed is lower or equal to age 0 swarms
       swarmID <- sample(getId(age0swarm), age0needed) # if yes, select the ids of swarms that will stay in apiary
       swarmTMP <- pullColonies(age0swarm, ID = swarmID) # pull out those selected age0 swarms
@@ -273,8 +266,20 @@ if (year == 1) {
   age1 <- list(Mel = createMultiColony(x = queens$Mel, n = IrelandSize),
                Car = createMultiColony(x = queens$Car, n = CarSize))
   #aqui empezamos a hacer lo de spatial
+  age1$Mel[1:150] <-  setLocation(age1$Mel[1:150], 
+                             location = Map(c, runif(nColonies(age1$Mel[1:150]), 0, pi), runif(nColonies(age1$Mel[1:150]), 0, 2*pi)))
+  age1$Mel[151:300] <-  setLocation(age1$Mel[151:300], 
+                                  location = Map(c, runif(nColonies(age1$Mel[151:300]), pi, 2*pi), runif(nColonies(age1$Mel[151:300]), 0, 2*pi)))
+
   
-  #Lig = createMultiColony(x = queens$Lig, n = LigSize))
+  locationsDF <- data.frame(Location = getLocation(c(age1$Mel[1:150], age1$Mel[151:300]), collapse = TRUE),
+                            Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel[1:150])),
+                                          rep("Beekeeper3", nColonies(age1$Mel[151:300]))))
+  
+  ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+    geom_point()
+  
+  
   print("Record initial colonies")
   colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$Mel, year = year, population = "Mel")
   colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$Car, year = year, population = "Car")
@@ -348,6 +353,7 @@ if (year > 1) {
                  Car = c(age0p1$Car, tmp$Car$split))
   #,Lig = c(age0p1$Lig, tmp$Lig$split))
 }
+
 #checkeo drones y workers numero
 #age0p1$Mel[1,]
 #workers<-mergePops(getWorkers(age0p1$Mel))
