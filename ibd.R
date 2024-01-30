@@ -265,6 +265,19 @@ if (year == 1) {
   print("Creating initial colonies")
   age1 <- list(Mel = createMultiColony(x = queens$Mel, n = IrelandSize),
                Car = createMultiColony(x = queens$Car, n = CarSize))
+  
+  #comrpobar los splits
+  tmp <- (Mel = pullColonies(age1$Mel, n=50))
+  amp<- (Car = pullColonies(age1$Car, n=50))
+  age1 <- list(Mel = tmp$remnant,
+               CaMel = c(tmp$pulled, amp$pulled),
+                 Car = amp$remnant)
+  queen1<- mergePops(getQueen(age1$CaMel))
+  IBDh<-apply(getIbdHaplo(queen1),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+  IBD<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
+  IBD
+  sum(IBD==1)
+  
   #aqui empezamos a hacer lo de spatial
   age1$Mel[1:150] <-  setLocation(age1$Mel[1:150], 
                              location = Map(c, runif(nColonies(age1$Mel[1:150]), 0, pi), runif(nColonies(age1$Mel[1:150]), 0, 2*pi)))
@@ -299,6 +312,7 @@ if (year == 1) {
 print(paste0("Building up the colonies to ", nWorkers, " and ", nDrones))
 print(Sys.time())
 age1 <- list(Mel = buildUp(age1$Mel),
+             CaMel = buildUp(age1$CaMel),
              Car = buildUp(age1$Car))
 #,Lig = buildUp(age1$Lig))
 if (year > 1) {
@@ -331,14 +345,37 @@ if (year > 1) {
 print("Splitting the colonies")
 print(Sys.time())
 tmp <- list(Mel = split(age1$Mel),
+            CaMel = split(age1$CaMel),
             Car = split(age1$Car))
 #,Lig = split(age1$Lig))
 age1 <- list(Mel = tmp$Mel$remnant,
+             CarMel = tmp$CaMel$remnant,
              Car = tmp$Car$remnant)
 #,Lig = tmp$Lig$remnant)
 
 # The queens of the splits are 0 years old
-age0p1 <- list(Mel = tmp$Mel$split, Car = tmp$Car$split) #,Lig = tmp$Lig$split
+age0p1 <- list(Mel = tmp$Mel$split, CaMel = tmp$CaMel$split, Car = tmp$Car$split) #,Lig = tmp$Lig$split
+DCAMel <- createDCA(age1$Mel)
+age0p1$Mel <- cross(age0p1$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p1$Mel), nDrones = nFathersPoisson))
+DCACar <- createDCA(age1$Car)
+age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
+DCACaMel <- createDCA(age1$CarMel)
+age0p1$CaMel <- cross(age0p1$CaMel, drones = pullDroneGroupsFromDCA(DCA = DCACaMel, n = nColonies(age0p1$CaMel), nDrones = nFathersPoisson))
+queen2<- mergePops(getQueen(age0p1$CaMel))
+IBDh<-apply(getIbdHaplo(queen2),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+IBD<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
+IBD
+sum(IBD==1)
+
+locationsDF <- data.frame(Location = getLocation(c(age0p1$Mel[1:150], age0p1$Mel[151:300]), collapse = TRUE),
+                          Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel[1:150])),
+                                        rep("Beekeeper3", nColonies(age1$Mel[151:300]))))
+
+ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+  geom_point()
+
+
+
 
 if (year > 1) {
   # Split all age2 colonies
