@@ -151,17 +151,6 @@ Rprof()                              # Start profiling
 # Founder population ---------------------------------------------------------
 # STEP 1:  Create a founder population of A. m. mellifera and A. m. carnica bees (un-# the one you want to use)
 
-# Using simulateHoneyBeeGenomes is a great way to get a basic founder gene pool
-# founderGenomes <- simulateHoneyBeeGenomes(nMelN = nMelN,
-#                                           nCar = nCar,
-#                                           nChr = nChr,
-#                                           nSegSites = nSegSites)
-#
-# save(founderGenomes, file="founderGenomes_ThreePop.RData")
-
-# Or you can load your previously made founder population
-# print("Loading in the founderData")
-# load("FounderGenomes_ThreePop_16chr.RData")
 #load("C:/Users/Usuario/Desktop/Máster/Bees/FounderGenomes_ThreePop_16chr.RData")
 
 # quick haplo to get the founder genomes for now.
@@ -200,9 +189,6 @@ SP$setVarE(varE = varE, corE = corE)
 # Create a base population for A. m. mellifera, A. m. mellifera cross, and A. m. carnica (400 of each)
 virginQueens <- list(Mel = createVirginQueens(x = founderGenomes[1:(nMelN)]),
                      Car = createVirginQueens(x = founderGenomes[(nMelN+1):(nMelN + nCar)]))
-getIbdHaplo(virginQueens$Car)[201,]
-getIbdHaplo(virginQueens$Mel)[900,]
-#,Lig = createVirginQueens(x = founderGenomes[(nMelN+nCar+1):(nMelN+nCar+nLig)])
 
 # Create drones for A. m. mellifera, A. m. mellifera cross, and A. m. carnica
 drones <- list(Mel = createDrones(x = virginQueens$Mel[(IrelandSize+1):(nMelN)], nInd = nDronesPerQueen),
@@ -217,11 +203,7 @@ fathersCar <- pullDroneGroupsFromDCA(drones$Car, n = nInd(virginQueens$Car[1:Car
 queens <- list(Mel = SIMplyBee::cross(x = virginQueens$Mel[1:IrelandSize], drones = fathersMel),
                Car = SIMplyBee::cross(x = virginQueens$Car[1:CarSize], drones = fathersCar))
 #,Lig = SIMplyBee::cross(x = virginQueens$Lig[1:LigSize], drones = fathersLig)
-getIbdHaplo(queens$Car)[200,]
-getIbdHaplo(queens$Mel)[600,]
-QueenHaploCodes<-unique(getIbdHaplo(queens$Mel))
-hapl<-as.data.frame.array(QueenHaploCodes,row.names=NULL)
-HaploCodes<-hapl[,1]
+
 
 #Set allele frequency for queens
 tmp <- c(virginQueens$Mel, virginQueens$Car) #, virginQueens$Lig
@@ -265,19 +247,6 @@ if (year == 1) {
   print("Creating initial colonies")
   age1 <- list(Mel = createMultiColony(x = queens$Mel, n = IrelandSize),
                Car = createMultiColony(x = queens$Car, n = CarSize))
-  
-  #comrpobar los splits
-  tmp <- (Mel = pullColonies(age1$Mel, n=50))
-  amp<- (Car = pullColonies(age1$Car, n=50))
-  age1 <- list(Mel = tmp$remnant,
-               CaMel = c(tmp$pulled, amp$pulled),
-                 Car = amp$remnant)
-  queen1<- mergePops(getQueen(age1$CaMel))
-  IBDh<-apply(getIbdHaplo(queen1),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
-  IBD<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
-  IBD
-  sum(IBD==1)
-  
   #aqui empezamos a hacer lo de spatial
   age1$Mel[1:150] <-  setLocation(age1$Mel[1:150], 
                              location = Map(c, runif(nColonies(age1$Mel[1:150]), 0, pi), runif(nColonies(age1$Mel[1:150]), 0, 2*pi)))
@@ -312,7 +281,6 @@ if (year == 1) {
 print(paste0("Building up the colonies to ", nWorkers, " and ", nDrones))
 print(Sys.time())
 age1 <- list(Mel = buildUp(age1$Mel),
-             CaMel = buildUp(age1$CaMel),
              Car = buildUp(age1$Car))
 #,Lig = buildUp(age1$Lig))
 if (year > 1) {
@@ -320,58 +288,33 @@ if (year > 1) {
                Car = buildUp(age2$Car))
   #,Lig = buildUp(age2$Lig))
 }
-#checkeo de cosas de ibd
-#workers<- mergePops(getWorkers(age1$Mel[29,]))
-#getIbdHaplo(workers)[16,]
 
-#queen<- mergePops(getQueen(age1$Mel))
-#getIbdHaplo(queen)[301,3333]
-
-#chequeo de el numero de drons y workers que hay por reina
-
-#workers<-mergePops(getWorkers(age1$Mel))
-#workers1<-mergePops(getWorkers(age1$Mel[6,]))
-#workers1
-#drones<-mergePops(getDrones(age1$Mel))
-#drones
-
-#queens = mergePops(getQueen(age1$Mel))
-#IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
-#IBD<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
-#IBD
-
-#
 # Split all age1 colonies
 print("Splitting the colonies")
 print(Sys.time())
 tmp <- list(Mel = split(age1$Mel),
-            CaMel = split(age1$CaMel),
             Car = split(age1$Car))
 #,Lig = split(age1$Lig))
 age1 <- list(Mel = tmp$Mel$remnant,
-             CarMel = tmp$CaMel$remnant,
              Car = tmp$Car$remnant)
 #,Lig = tmp$Lig$remnant)
 
 # The queens of the splits are 0 years old
-age0p1 <- list(Mel = tmp$Mel$split, CaMel = tmp$CaMel$split, Car = tmp$Car$split) #,Lig = tmp$Lig$split
-DCAMel <- createDCA(age1$Mel)
-age0p1$Mel <- cross(age0p1$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p1$Mel), nDrones = nFathersPoisson))
-DCACar <- createDCA(age1$Car)
-age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
-DCACaMel <- createDCA(age1$CarMel)
-age0p1$CaMel <- cross(age0p1$CaMel, drones = pullDroneGroupsFromDCA(DCA = DCACaMel, n = nColonies(age0p1$CaMel), nDrones = nFathersPoisson))
-queen2<- mergePops(getQueen(age0p1$CaMel))
-IBDh<-apply(getIbdHaplo(queen2),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
-IBD<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
-IBD
-sum(IBD==1)
+age0p1 <- list(Mel = tmp$Mel$split, Car = tmp$Car$split) #,Lig = tmp$Lig$split
 
-locationsDF <- data.frame(Location = getLocation(c(age0p1$Mel[1:150], age0p1$Mel[151:300]), collapse = TRUE),
-                          Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel[1:150])),
-                                        rep("Beekeeper3", nColonies(age1$Mel[151:300]))))
+idfirst<-getId(age0p1$Mel[1:150])
+idsecond<-getId(age0p1$Mel[151:300])
+age0p1$Mel[1:150] <-  setLocation(age0p1$Mel[1:150], 
+                                location = Map(c, runif(nColonies(age0p1$Mel[1:150]), 0, pi), runif(nColonies(age0p1$Mel[1:150]), 0, 2*pi)))
+age0p1$Mel[151:300] <-  setLocation(age0p1$Mel[151:300], 
+                                  location = Map(c, runif(nColonies(age0p1$Mel[151:300]), pi, 2*pi), runif(nColonies(age0p1$Mel[151:300]), 0, 2*pi)))
 
-ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+
+locationsDFp1 <- data.frame(Location = getLocation(c(age0p1$Mel[1:150], age0p1$Mel[151:300]), collapse = TRUE),
+                          Beekeeper = c(rep("Beekeeper1", nColonies(age0p1$Mel[1:150])),
+                                        rep("Beekeeper3", nColonies(age0p1$Mel[151:300]))))
+
+ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
   geom_point()
 
 
@@ -391,13 +334,7 @@ if (year > 1) {
   #,Lig = c(age0p1$Lig, tmp$Lig$split))
 }
 
-#checkeo drones y workers numero
-#age0p1$Mel[1,]
-#workers<-mergePops(getWorkers(age0p1$Mel))
-#workers<-mergePops(getWorkers(age1$Mel))
-#drones<-mergePops(getDrones(age1$Mel))
-# Create virgin queens
-# Sample colony for the virgin queens
+
 print("Create virgin queens, period 1")
 print(Sys.time())
 virginDonor <- list(Mel = sample.int(n = nColonies(age1$Mel), size = 1),
@@ -416,51 +353,55 @@ virginQueens <- list(Mel = createVirginQueens(age1$Mel[[virginDonor$Mel]], nInd 
                      Car = createVirginQueens(age1$Car[[virginDonor$Car]], nInd = nColonies(age0p1$Car)+nColonies(age0p1$MelImport)))
 #,Lig = createVirginQueens(age1$Lig[[virginDonor$Lig]], nInd = nColonies(age0p1$Lig)+(nColonies(age0p1$MelImport)/2)))
 
-haploCodeMel0=getIbdHaplo(virginQueens$Mel)
-hapl<-as.data.frame.array(haploCodeMel0,row.names=NULL)
-haploCodeMel0<-unique(hapl[,1])
-HaploCodes<-unique(c(HaploCodes,haploCodeMel0))
-HaploCodes
 # Requeen the splits --> queens are now 0 years old
-#
+
 
 nColoniesMelImport<-nColonies(age0p1$MelImport)
 nColoniesCar<-nColonies(age0p1$Car)+nColonies(age0p1$MelImport)
-#nColoniesLig<-nColonies(age0p1$Lig)+(nColonies(age0p1$MelImport)/2)
+
 age0p1 <- list(Mel = c(reQueen(age0p1$Mel, queen = (virginQueens$Mel)) ,
                        reQueen(age0p1$MelImport, queen = c((virginQueens$Car)[1:nColoniesMelImport]))),       #,(virginQueens$Lig)[1:(nColoniesMelImport/2)]))),
                Car = reQueen(age0p1$Car, queen = virginQueens$Car[(nColoniesMelImport+1):nColoniesCar]))
-#,Lig = reQueen(age0p1$Lig, queen = virginQueens$Lig[((nColoniesMelImport/2)+1):nColoniesLig]))
+
+caca<-pullColonies(age0p1$Mel, ID=idfirst)
+coca<-caca$pulled
+coco<-caca$remnant
+locationsDFp1 <- data.frame(Location = getLocation(c(coca, coco), collapse = TRUE),
+                            Beekeeper = c(rep("Beekeeper1", nColonies(coca)),
+                                          rep("Beekeeper3", nColonies(coco))))
+
+ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+  geom_point()
 
 
-
-#Checkeo de drones y workers
-#workers<-mergePops(getWorkers(age0p1$Mel))
-#workers<-mergePops(getWorkers(age1$Mel))
-#drones<-mergePops(getDrones(age0p1$Mel))
-#igual que antes
-
-
-
-
+#ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+#  geom_point()
 # Swarm a percentage of age1 colonies
 print("Swarm colonies, P1")
 print(Sys.time())
 tmp <- list(Mel = pullColonies(age1$Mel, p = p1swarm),
             Car = pullColonies(age1$Car, p = p1swarm))
-#,Lig = pullColonies(age1$Lig, p = p1swarm))
+swamss<-getId(tmp$Mel$pulled)
 age1 <- list(Mel = tmp$Mel$remnant,
              Car = tmp$Car$remnant)
 #,Lig = tmp$Lig$remnant)
-tmp <- list(Mel = swarm(tmp$Mel$pulled),
-            Car = swarm(tmp$Car$pulled))
+tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 0.3),
+            Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 0.3))
+swams<-getId(tmp$Mel$swarm)
 #,Lig = swarm(tmp$Lig$pulled))
 age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$remnant),
                Car = c(age0p1$Car, tmp$Car$remnant))
 #,Lig = c(age0p1$Lig, tmp$Lig$remnant))
 age1 <- list(Mel = c(age1$Mel, tmp$Mel$swarm),
              Car = c(age1$Car, tmp$Car$swarm))
-#,Lig = c(age1$Lig, tmp$Lig$swarm))
+
+#tengo que sacar los ids de las que swarmean y de las nuevas y plotearlas a ver si es verdad que swarmean cerca
+locationsDFp1 <- data.frame(Location = getLocation(c(age0p1$Mel[1:150], age0p1$Mel[151:315]), collapse = TRUE),
+                            Beekeeper = c(rep("Beekeeper1", nColonies(age0p1$Mel[1:150])),
+                                          rep("Beekeeper3", nColonies(age0p1$Mel[151:315]))))
+
+ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+   geom_point()
 
 
 if (year > 1) {
@@ -481,13 +422,6 @@ if (year > 1) {
                Car = c(age2$Car, tmp$Car$swarm))
   #,Lig = c(age2$Lig, tmp$Lig$swarm))
 }
-
-#Checkeo de drones y workers
-#age1$Mel
-#workers<-mergePops(getWorkers(age1$Mel))
-#workers<-mergePops(getWorkers(age1$Mel))
-#drones<-mergePops(getDrones(age0p1$Mel))
-
 
 # Supersede age1 colonies
 print("Supersede colonies, P1")
@@ -521,12 +455,6 @@ if (year > 1) {
   #,Lig = c(age0p1$Lig, tmp$Lig))
 }
 
-#Checkeo de drones y workers
-
-#workers<-mergePops(getWorkers(age0p1$Mel))
-#workers<-mergePops(getWorkers(age1$Mel))
-#drones<-mergePops(getDrones(age0p1$Mel))
-
 
 # Mate the split colonies
 print("Mate split colonies, P1")
@@ -547,15 +475,6 @@ if (year == 1) {
   #age0p1$Lig <- cross(age0p1$Lig, drones = pullDroneGroupsFromDCA(DCA = DCALig, n = nColonies(age0p1$Lig), nDrones = nFathersPoisson))
 }
 
-#workers<-mergePops(getWorkers(age0p1$Mel))
-#workers<-mergePops(getWorkers(age1$Mel))
-#drones<-mergePops(getDrones(age0p1$Mel))
-
-queens = mergePops(getQueen(age0p1$Mel))
-IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
-IBD<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
-IBD
-
 
 # Collapse
 print("Collapse colonies, P1")
@@ -568,6 +487,7 @@ if (year > 1) {
                Car = selectColonies(age2$Car, p = 1 - p1collapse))
   #,Lig = selectColonies(age2$Lig, p = 1 - p1collapse))
 }
+
 
 # Period2 ------------------------------------------------------------------
 print("PERIOD 2")
