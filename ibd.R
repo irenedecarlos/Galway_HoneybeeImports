@@ -248,6 +248,8 @@ if (year == 1) {
   age1 <- list(Mel = createMultiColony(x = queens$Mel, n = IrelandSize),
                Car = createMultiColony(x = queens$Car, n = CarSize))
   #aqui empezamos a hacer lo de spatial
+  first<-getId(age1$Mel[1:150])
+  second<-getId(age1$Mel[151:300])
   age1$Mel[1:150] <-  setLocation(age1$Mel[1:150], 
                              location = Map(c, runif(nColonies(age1$Mel[1:150]), 0, pi), runif(nColonies(age1$Mel[1:150]), 0, 2*pi)))
   age1$Mel[151:300] <-  setLocation(age1$Mel[151:300], 
@@ -320,7 +322,7 @@ ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekee
 
 
 
-if (year > 1) {
+ if (year > 1) {
   # Split all age2 colonies
   tmp <- list(Mel = split(age2$Mel),
               Car = split(age2$Car))
@@ -364,11 +366,11 @@ age0p1 <- list(Mel = c(reQueen(age0p1$Mel, queen = (virginQueens$Mel)) ,
                Car = reQueen(age0p1$Car, queen = virginQueens$Car[(nColoniesMelImport+1):nColoniesCar]))
 
 caca<-pullColonies(age0p1$Mel, ID=idfirst)
-coca<-caca$pulled
-coco<-caca$remnant
-locationsDFp1 <- data.frame(Location = getLocation(c(coca, coco), collapse = TRUE),
-                            Beekeeper = c(rep("Beekeeper1", nColonies(coca)),
-                                          rep("Beekeeper3", nColonies(coco))))
+firsthalf<-caca$pulled
+secondhalf<-caca$remnant
+locationsDFp1 <- data.frame(Location = getLocation(c(firsthalf, secondhalf), collapse = TRUE),
+                            Beekeeper = c(rep("Beekeeper1", nColonies(firsthalf)),
+                                          rep("Beekeeper3", nColonies(secondhalf))))
 
 ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
   geom_point()
@@ -381,13 +383,15 @@ print("Swarm colonies, P1")
 print(Sys.time())
 tmp <- list(Mel = pullColonies(age1$Mel, p = p1swarm),
             Car = pullColonies(age1$Car, p = p1swarm))
-swamss<-getId(tmp$Mel$pulled)
+lower150<-which((getId(tmp$Mel$pulled)<=150))  #with this I am selecting the ids of the colonies that swarm that are lower than 150 and greater
+greater150<-which((getId(tmp$Mel$pulled)>150)) 
 age1 <- list(Mel = tmp$Mel$remnant,
              Car = tmp$Car$remnant)
 #,Lig = tmp$Lig$remnant)
 tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 0.3),
             Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 0.3))
-swams<-getId(tmp$Mel$swarm)
+swarms2<-getId(tmp$Mel$swarm)
+swarms3<-getId(tmp$Mel$remnant)
 #,Lig = swarm(tmp$Lig$pulled))
 age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$remnant),
                Car = c(age0p1$Car, tmp$Car$remnant))
@@ -395,21 +399,32 @@ age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$remnant),
 age1 <- list(Mel = c(age1$Mel, tmp$Mel$swarm),
              Car = c(age1$Car, tmp$Car$swarm))
 
-#tengo que sacar los ids de las que swarmean y de las nuevas y plotearlas a ver si es verdad que swarmean cerca
-locationsDFp1 <- data.frame(Location = getLocation(c(age0p1$Mel[1:150], age0p1$Mel[151:315]), collapse = TRUE),
-                            Beekeeper = c(rep("Beekeeper1", nColonies(age0p1$Mel[1:150])),
-                                          rep("Beekeeper3", nColonies(age0p1$Mel[151:315]))))
+age1idfirst<-c(first,swarms2[lower150])      # and here im adding those colonies to the previous list of IDs for age1
+age1idsecond<-c(second,swarms2[greater150])
+#to plot their location
+#first2<-pullColonies(age1$Mel, ID = c(first,swarms2[lower150]))
+#first3<-first2$pulled
+#second2<-first2$remnant
+age0p1idfirst<-c(idfirst,swarms3[lower150]) #and here for age0p1
+age0p1idsecond<-c(idsecond,swarms3[greater150])
+#idfirst2<-pullColonies(age0p1$Mel, ID = c(idfirst, swarms3[lower150]))
+#idfirst3<-idfirst2$pulled
+#idsecond2<-idfirst2$remnant
 
-ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
-   geom_point()
+#firsthalf y secondhalf son age0p1 y les has añadido algo de age1. hay que añadirles las remnant
+#locationsDF1 <- data.frame(Location = getLocation(c(idfirst3, idsecond2), collapse = TRUE),
+#                            Beekeeper = c(rep("Beekeeper1", nColonies(idfirst3)),
+#                                          rep("Beekeeper3", nColonies(idsecond2))))
 
+#ggplot(data = locationsDF1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+#  geom_point()
 
 if (year > 1) {
   # Swarm a percentage of age2 colonies
   tmp <- list(Mel = pullColonies(age2$Mel, p = p1swarm),
               Car = pullColonies(age2$Car, p = p1swarm))
   #, Lig = pullColonies(age2$Lig, p = p1swarm))
-  age2 <- list(Mel = tmp$Mel$remainingColonies,     #why remainingcolonies and not remnant
+  age2 <- list(Mel = tmp$Mel$remnant,     
                Car = tmp$Car$remnant)
   #,Lig = tmp$Lig$remnant)
   tmp <- list(Mel = swarm(tmp$Mel$pulled),
@@ -428,16 +443,31 @@ print("Supersede colonies, P1")
 print(Sys.time())
 tmp <- list(Mel = pullColonies(age1$Mel, p = p1supersede),
             Car = pullColonies(age1$Car, p = p1supersede))
-#,Lig = pullColonies(age1$Lig, p = p1supersede))
+lower150s<-(getId(tmp$Mel$pulled)[getId(tmp$Mel$pulled)<=150])
+greater150s<-(getId(tmp$Mel$pulled)[151:300])
+
 age1 <- list(Mel = tmp$Mel$remnant,
              Car = tmp$Car$remnant)
-#,Lig = tmp$Lig$remnant)
+
 tmp <- list(Mel = supersede(tmp$Mel$pulled),
             Car = supersede(tmp$Car$pulled))
-#,Lig = supersede(tmp$Lig$pulled))
+
 age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel),
                Car = c(age0p1$Car, tmp$Car))
-#, Lig = c(age0p1$Lig, tmp$Lig))
+
+age0p1idfirst<-c(age0p1idfirst,lower150s)
+age0p1idsecond<-c(age0p1idsecond,greater150s)
+
+patufo<-pullColonies(age0p1$Mel, ID = age0p1idfirst)
+patufo2<-patufo$pulled
+patufo3<-patufo$remnant
+
+locationsDFp1 <- data.frame(Location = getLocation(c(patufo2, patufo3), collapse = TRUE),
+                            Beekeeper = c(rep("Beekeeper1", nColonies(patufo2)),
+                                          rep("Beekeeper3", nColonies(patufo3))))
+
+ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+  geom_point()
 
 if (year > 1) {
   # Supersede age2 colonies
