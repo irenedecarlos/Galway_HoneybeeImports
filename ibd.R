@@ -201,7 +201,7 @@ fathersCar <- pullDroneGroupsFromDCA(drones$Car, n = nInd(virginQueens$Car[1:Car
 queens <- list(Mel = SIMplyBee::cross(x = virginQueens$Mel[1:IrelandSize], drones = fathersMel),
                Car = SIMplyBee::cross(x = virginQueens$Car[1:CarSize], drones = fathersCar))
 
-year=2
+year=1
 
 # Start the year-loop ------------------------------------------------------------------
 #for (year in 1:nYear) {
@@ -262,21 +262,10 @@ age1 <- list(Mel = tmp$Mel$remnant,
 # The queens of the splits are 0 years old
 age0p1 <- list(Mel = tmp$Mel$split, Car = tmp$Car$split) 
 
-#Set the location of splits to a location near where thw original colony is
+#Set the location of splits to a location near where the original colony is
 x <- sapply(getLocation(age1$Mel), function(X) X[1])
 y <- sapply(getLocation(age1$Mel), function(X) X[2])
 age0p1$Mel<-setLocation(age0p1$Mel, location = Map(c, (x+runif(length(x), min = -0.1, max = 0.1)), (y+runif(length(y), min = -0.1, max = 0.1))))
-
-locationsDFp1 <- data.frame(Location = getLocation(c(age1$Mel, age0p1$Mel,age2$Mel), collapse = TRUE),
-                          Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel)),
-                                        rep("Beekeeper2", nColonies(age2$Mel)),
-                                        rep("Beekeeper3", nColonies(age0p1$Mel))))
-
-ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
-  geom_point()
-
-
-
 
  if (year > 1) {
   # Split all age2 colonies
@@ -302,8 +291,11 @@ virginDonor <- list(Mel = sample.int(n = nColonies(age1$Mel), size = 1),
                     Car = sample.int(n = nColonies(age1$Car), size = 1))
 # Virgin queens for splits!
 pImport<-0.3
-
-tmp <- (Mel = pullColonies(age0p1$Mel, p=pImport))
+ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= 2 )],nColonies(age0p1$Mel)*pImport*0.10)
+thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= 2 & coords[1] <= 4)],nColonies(age0p1$Mel)*pImport*0.30)
+ses <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] > 4)],nColonies(age0p1$Mel)*pImport*0.60)
+idstopull<-c(ten,thirty,ses)
+tmp <- (Mel = pullColonies(age0p1$Mel,ID=idstopull))
 IdImportColonies<-getId(tmp$pulled)
 age0p1 <- list(Mel = tmp$remnant,
                MelImport = tmp$pulled,
@@ -311,6 +303,7 @@ age0p1 <- list(Mel = tmp$remnant,
 
 virginQueens <- list(Mel = createVirginQueens(age1$Mel[[virginDonor$Mel]], nInd = nColonies(age0p1$Mel)),
                      Car = createVirginQueens(age1$Car[[virginDonor$Car]], nInd = nColonies(age0p1$Car)+nColonies(age0p1$MelImport)))
+
 
 # Requeen the splits --> queens are now 0 years old
 
@@ -374,7 +367,6 @@ tmp <- list(Mel = supersede(tmp$Mel$pulled),
 age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel),
                Car = c(age0p1$Car, tmp$Car))
 
-
 if (year > 1) {
   # Supersede age2 colonies
   tmp <- list(Mel = pullColonies(age2$Mel, p = p1supersede),
@@ -389,7 +381,6 @@ if (year > 1) {
   age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel),
                  Car = c(age0p1$Car, tmp$Car))
 }
-
 
 # Mate the split colonies
 print("Mate split colonies, P1")
@@ -421,6 +412,7 @@ if (year > 1) {
 
 }
 
+
 # Period2 ------------------------------------------------------------------
 print("PERIOD 2")
 # Swarm a percentage of age1 colonies
@@ -443,6 +435,8 @@ age0p2 <- list(Mel = tmp$Mel$remnant,
 age1 <- list(Mel = c(age1$Mel, tmp$Mel$swarm),
              Car = c(age1$Car, tmp$Car$swarm))
 
+
+
 if (year > 1) {
   # Swarm a percentage of age2 colonies
   tmp <- list(Mel = pullColonies(age2$Mel, p = p2swarm),
@@ -462,6 +456,7 @@ if (year > 1) {
                Car = c(age2$Car, tmp$Car$swarm))
  
 }
+
 
 # Supersede a part of age1 colonies
 print("Supersede colonies, P2")
@@ -496,7 +491,14 @@ if (year > 1) {
                  Car = c(age0p2$Car, tmp$Car))
   
 }
+locationsDFp1 <- data.frame(Location = getLocation(c(age1$Mel, age2$Mel,age0p1$Mel,age0p2$Mel), collapse = TRUE),
+                            Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel)),
+                                          rep("Beekeeper2", nColonies(age2$Mel)),
+                                          rep("Beekeeper3", nColonies(age0p1$Mel)),
+                                          rep("Beekeeper4", nColonies(age0p2$Mel))))
 
+ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+  geom_point()
 # Replace all the drones
 print("Replace Drones, P2")
 print(Sys.time())
@@ -562,12 +564,6 @@ age1 <- list(Mel = selectColonies(age1$Mel, p = (1 - p3collapseAge1)),
 
 age2 <- list(Mel = NULL, Car = NULL)#We don't need this but just to show the workflow!!!
 
-locationsDFp1 <- data.frame(Location = getLocation(c(age1$Mel, age0$Mel), collapse = TRUE),
-                            Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel)),
-                                          rep("Beekeeper2", nColonies(age0$Mel))))
-
-ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
-  geom_point()
 
 
 # Maintain the number of colonies ------------------------------------------
