@@ -191,7 +191,7 @@ virginQueens <- list(Mel = createVirginQueens(x = founderGenomes[1:(nMelN)]),
 # Create drones for A. m. mellifera, A. m. mellifera cross, and A. m. carnica
 drones <- list(Mel = createDrones(x = virginQueens$Mel[(IrelandSize+1):(nMelN)], nInd = nDronesPerQueen),
                Car = createDrones(x = virginQueens$Car[(CarSize+1):nCar], nInd = nDronesPerQueen))
-getIbdHaplo(drones$Mel)[7500,]#los drones van hasta 900
+
 
 # Get fathers for Mel, MelCross and Car
 fathersMel <- pullDroneGroupsFromDCA(drones$Mel, n = nInd(virginQueens$Mel[1:IrelandSize]), nDrones = nFathersPoisson) #crea 300 grupos de drones con 10 drones por grupo
@@ -227,10 +227,6 @@ if (year == 1) {
     geom_point()
   
   
-  print("Record initial colonies")
-  colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$Mel, year = year, population = "Mel")
-  colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$Car, year = year, population = "Car")
-
   # If not, promote the age0 to age1, age1 to age2 and remove age2 colonies
 } else {
   age2 <- list(Mel = age1$Mel, Car = age1$Car)
@@ -383,17 +379,16 @@ if (year > 1) {
 }
 
 # Mate the split colonies
+
 print("Mate split colonies, P1")
 print(Sys.time())
 if (year == 1) {
-  DCAMel <- createDCA(age1$Mel)
-  age0p1$Mel <- cross(age0p1$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p1$Mel), nDrones = nFathersPoisson))
+  age0p1$Mel <- cross(age0p1$Mel, droneColonies = age1$Mel, crossPlan= "create", spatial= T, radius= 2, nDrones= nDronesPoisson, checkCross = "warning")
   DCACar <- createDCA(age1$Car)
   age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
-  
+
 } else {
-  DCAMel <- createDCA(c(age1$Mel, age2$Mel))
-  age0p1$Mel <- cross(age0p1$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p1$Mel), nDrones = nFathersPoisson))
+  age0p1$Mel <- cross(age0p1$Mel, droneColonies = c(age1$Mel,age2$Mel), crossPlan= "create", spatial= T, radius= 2, nDrones= nDronesPoisson, checkCross = "warning")
   DCACar <- createDCA(c(age1$Car, age2$Car))
   age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
   
@@ -491,14 +486,7 @@ if (year > 1) {
                  Car = c(age0p2$Car, tmp$Car))
   
 }
-locationsDFp1 <- data.frame(Location = getLocation(c(age1$Mel, age2$Mel,age0p1$Mel,age0p2$Mel), collapse = TRUE),
-                            Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel)),
-                                          rep("Beekeeper2", nColonies(age2$Mel)),
-                                          rep("Beekeeper3", nColonies(age0p1$Mel)),
-                                          rep("Beekeeper4", nColonies(age0p2$Mel))))
 
-ggplot(data = locationsDFp1, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
-  geom_point()
 # Replace all the drones
 print("Replace Drones, P2")
 print(Sys.time())
@@ -519,21 +507,15 @@ print(Sys.time())
 
 
 if (year == 1) {
-  DCAMel <- createDCA(age1$Mel)
-  age0p2$Mel <- cross(age0p2$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p2$Mel), nDrones = nFathersPoisson))
+  age0p2$Mel <- cross(age0p2$Mel, droneColonies = age1$Mel, crossPlan= "create", spatial= T, radius= 5, nDrones= nDronesPoisson, checkCross = "warning")
   DCACar <- createDCA(age1$Car)
   age0p2$Car <- cross(age0p2$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p2$Car), nDrones = nFathersPoisson))
   
 } else {
-  DCAMel <- createDCA(c(age1$Mel, age2$Mel))
-  fathersMel <- pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p2$Mel), nDrones = nFathersPoisson)
-  fathersMel[[1]] <- c(fathersMel[[1]], createDrones(age1$Mel[[1]], nInd = 2))
-  age0p2$Mel <- cross(age0p2$Mel, drones = fathersMel)
+  age0p2$Mel <- cross(age0p2$Mel, droneColonies = c(age1$Mel,age2$Mel), crossPlan= "create", spatial= T, radius= 5, nDrones= nDronesPoisson, checkCross = "warning")
   DCACar <- createDCA(c(age1$Car, age2$Car))
   fathersCar <-  pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p2$Car), nDrones = nFathersPoisson)
-  fathersCar[[1]] <- c(fathersCar[[1]], createDrones(age1$Car[[1]], nInd = 2))
   age0p2$Car <- cross(age0p2$Car, drones = fathersCar)
-  
 }
 
 # Collapse
@@ -586,6 +568,14 @@ for (subspecies in c("Mel", "Car")) {     #,"Lig"
 
 
 } # Year-loop
+
+locationsDF <- data.frame(Location = getLocation(c(age1$Mel, age0$Mel), collapse = TRUE),
+                          Colony = c(rep("Age1", nColonies(age1$Mel)),
+                                        c(rep("Age0", nColonies(age0$Mel)))))
+ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Colony)) + 
+  geom_point()
+
+
 
 a <- toc()
 loopTime <- rbind(loopTime, c(Rep, a$tic, a$toc, a$msg, (a$toc - a$tic)))
