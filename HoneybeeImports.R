@@ -104,7 +104,6 @@ if (burninOrScenario == "burnin") {
   library(SIMplyBee)
   library(dplyr)
   library(tidyr)
-  install.packages("nadiv")
   # TODO: replace with devtools installation from Github once the package is operational
   # Source the development version of AlphaSimR
   
@@ -176,7 +175,7 @@ if (burninOrScenario == "burnin") {
                                 pheQueens_BritFit  = sapply(getPheno(colonies, caste = "queen"), function(x) x[1,3]),
                                 pheQueens_EuFit    = sapply(getPheno(colonies, caste = "queen"), function(x) x[1,4]),
                                 IBD = sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
-                                
+                                #Carsurviving<-sum(IBD==0) this would calculate how many carnicas of age 0 are surviving
                                 
                      ))}
   colonyRecords = NULL
@@ -728,12 +727,12 @@ if (burninOrScenario == "burnin") {
     
     columnheaders<-c("MeanIBD","VarIBD","Year","Rep","Population","HoneyYieldBrit","sdHoneyYieldBrit","HoneyYieldEu","sdHoneyYieldEu",
                      "FitnessBrit","sdFitnessBrit","FitnessEu","sdFitnessEu","pheHoneyYieldBrit","sdpheHoneyYieldBrit","pheHoneyYieldEu","sdpheHoneyYieldEu",
-                     "pheFitnessBrit","sdpheFitnessBrit","pheFitnessEu","sdpheFitnessEu","Homocigosity","sdHomocigosity","sdIBD")
+                     "pheFitnessBrit","sdpheFitnessBrit","pheFitnessEu","sdpheFitnessEu","Homocigosity","sdHomocigosity","sdIBD","survivingCar")
     
     if (year==1){ 
       columnheaders<-c("MeanIBD","VarIBD","Year","Rep","Population","HoneyYieldBrit","sdHoneyYieldBrit","HoneyYieldEu","sdHoneyYieldEu",
                        "FitnessBrit","sdFitnessBrit","FitnessEu","sdFitnessEu","pheHoneyYieldBrit","sdpheHoneyYieldBrit","pheHoneyYieldEu","sdpheHoneyYieldEu",
-                       "pheFitnessBrit","sdpheFitnessBrit","pheFitnessEu","sdpheFitnessEu","Homocigosity","sdHomocigosity","sdIBD")
+                       "pheFitnessBrit","sdpheFitnessBrit","pheFitnessEu","sdpheFitnessEu","Homocigosity","sdHomocigosity","sdIBD","survivingCar")
       MeanVarMel <- data.frame(matrix(ncol = length(columnheaders), nrow = 0)) #dataframe for mellifera
       colnames(MeanVarMel)<-columnheaders
       MeanVarCar <- data.frame(matrix(ncol = length(columnheaders), nrow = 0)) #dataframe for carnica
@@ -767,7 +766,7 @@ if (burninOrScenario == "burnin") {
                          pheHoneyYieldEu=mean(colonyRecords[(uno+1):dos,"pheQueens_EuHY"]), sdpheHoneyYieldEu=sd(colonyRecords[(uno+1):dos,"pheQueens_EuHY"]),
                          pheFitnessEu=mean(colonyRecords[(uno+1):dos,"pheQueens_EuFit"]), sdpheFitnessEu=sd(colonyRecords[(uno+1):dos,"pheQueens_EuFit"]),
                          Homocigosity=mean(colonyRecords[(uno+1):dos,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(uno+1):dos,"pHomBrood"]),
-                         sdIBD=sd(colonyRecords[(uno+1):dos,"IBD"]))
+                         sdIBD=sd(colonyRecords[(uno+1):dos,"IBD"]),survivingCar=sd(colonyRecords[(uno+1):dos,"IBD"]))
     
     #record values for Mellifera without imports population
     colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$MelnI, year = year, population = "MelnI", Rep=Rep)
@@ -786,7 +785,7 @@ if (burninOrScenario == "burnin") {
                          pheHoneyYieldEu=mean(colonyRecords[(dos+1):tres,"pheQueens_EuHY"]), sdpheHoneyYieldEu=sd(colonyRecords[(dos+1):tres,"pheQueens_EuHY"]),
                          pheFitnessEu=mean(colonyRecords[(dos+1):tres,"pheQueens_EuFit"]), sdpheFitnessEu=sd(colonyRecords[(dos+1):tres,"pheQueens_EuFit"]),
                          Homocigosity=mean(colonyRecords[(dos+1):tres,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(dos+1):tres,"pHomBrood"]),
-                         sdIBD=sd(colonyRecords[(dos+1):tres,"IBD"]))
+                         sdIBD=sd(colonyRecords[(dos+1):tres,"IBD"]),survivingCar=sd(colonyRecords[(dos+1):tres,"IBD"]))
     
     #record values of Carnica population
     colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$Car, year = year, population = "Car", Rep=Rep)
@@ -804,7 +803,7 @@ if (burninOrScenario == "burnin") {
                          pheHoneyYieldEu=mean(colonyRecords[(tres+1):cua,"pheQueens_EuHY"]), sdpheHoneyYieldEu=sd(colonyRecords[(tres+1):cua,"pheQueens_EuHY"]),
                          pheFitnessEu=mean(colonyRecords[(tres+1):cua,"pheQueens_EuFit"]), sdpheFitnessEu=sd(colonyRecords[(tres+1):cua,"pheQueens_EuFit"]),
                          Homocigosity=mean(colonyRecords[(tres+1):cua,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(tres+1):cua,"pHomBrood"]),
-                         sdIBD=sd(colonyRecords[(tres+1):cua,"IBD"]))
+                         sdIBD=sd(colonyRecords[(tres+1):cua,"IBD"]),survivingCar=sd(colonyRecords[(tres+1):cua,"IBD"]))
     
     #Combine what we had in each dataframe with the new info, so each year the dataframe updates with new values
     MeanVarMel<-rbind(MeanVarMel,newrow1)
@@ -1328,12 +1327,12 @@ if (burninOrScenario == "scenario") {
     
     columnheaders<-c("MeanIBD","VarIBD","Year","Rep","Population","HoneyYieldBrit","sdHoneyYieldBrit","HoneyYieldEu","sdHoneyYieldEu",
                      "FitnessBrit","sdFitnessBrit","FitnessEu","sdFitnessEu","pheHoneyYieldBrit","sdpheHoneyYieldBrit","pheHoneyYieldEu","sdpheHoneyYieldEu",
-                     "pheFitnessBrit","sdpheFitnessBrit","pheFitnessEu","sdpheFitnessEu","Homocigosity","sdHomocigosity","sdIBD")
+                     "pheFitnessBrit","sdpheFitnessBrit","pheFitnessEu","sdpheFitnessEu","Homocigosity","sdHomocigosity","sdIBD","survivingCar")
     
     if (year==1){ 
       columnheaders<-c("MeanIBD","VarIBD","Year","Rep","Population","HoneyYieldBrit","sdHoneyYieldBrit","HoneyYieldEu","sdHoneyYieldEu",
                        "FitnessBrit","sdFitnessBrit","FitnessEu","sdFitnessEu","pheHoneyYieldBrit","sdpheHoneyYieldBrit","pheHoneyYieldEu","sdpheHoneyYieldEu",
-                       "pheFitnessBrit","sdpheFitnessBrit","pheFitnessEu","sdpheFitnessEu","Homocigosity","sdHomocigosity","sdIBD")
+                       "pheFitnessBrit","sdpheFitnessBrit","pheFitnessEu","sdpheFitnessEu","Homocigosity","sdHomocigosity","sdIBD","survivingCar")
       MeanVarMel <- data.frame(matrix(ncol = length(columnheaders), nrow = 0)) #dataframe for mellifera
       colnames(MeanVarMel)<-columnheaders
       MeanVarCar <- data.frame(matrix(ncol = length(columnheaders), nrow = 0)) #dataframe for carnica
@@ -1351,6 +1350,7 @@ if (burninOrScenario == "scenario") {
     
     #record values of Mellifera population
     colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$Mel, year = year, population = "Mel", Rep=Rep)
+    unoymedio<-nrow(colonyRecords)
     colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$Mel, year = year, population = "Mel", Rep=Rep)
     dos<-nrow(colonyRecords)#this is to show where to end recording values on the dataframe
     
@@ -1367,7 +1367,7 @@ if (burninOrScenario == "scenario") {
                          pheHoneyYieldEu=mean(colonyRecords[(uno+1):dos,"pheQueens_EuHY"]), sdpheHoneyYieldEu=sd(colonyRecords[(uno+1):dos,"pheQueens_EuHY"]),
                          pheFitnessEu=mean(colonyRecords[(uno+1):dos,"pheQueens_EuFit"]), sdpheFitnessEu=sd(colonyRecords[(uno+1):dos,"pheQueens_EuFit"]),
                          Homocigosity=mean(colonyRecords[(uno+1):dos,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(uno+1):dos,"pHomBrood"]),
-                         sdIBD=sd(colonyRecords[(uno+1):dos,"IBD"]))
+                         sdIBD=sd(colonyRecords[(uno+1):dos,"IBD"]), survivingCar=sum(colonyRecords[(uno+1):unoymedio,"IBD"]==0))
     
     #record values for Mellifera without imports population
     colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$MelnI, year = year, population = "MelnI", Rep=Rep)
@@ -1386,7 +1386,7 @@ if (burninOrScenario == "scenario") {
                          pheHoneyYieldEu=mean(colonyRecords[(dos+1):tres,"pheQueens_EuHY"]), sdpheHoneyYieldEu=sd(colonyRecords[(dos+1):tres,"pheQueens_EuHY"]),
                          pheFitnessEu=mean(colonyRecords[(dos+1):tres,"pheQueens_EuFit"]), sdpheFitnessEu=sd(colonyRecords[(dos+1):tres,"pheQueens_EuFit"]),
                          Homocigosity=mean(colonyRecords[(dos+1):tres,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(dos+1):tres,"pHomBrood"]),
-                         sdIBD=sd(colonyRecords[(dos+1):tres,"IBD"]))
+                         sdIBD=sd(colonyRecords[(dos+1):tres,"IBD"]), survivingCar=sd(colonyRecords[(dos+1):tres,"IBD"]))
     
     #record values of Carnica population
     colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$Car, year = year, population = "Car", Rep=Rep)
@@ -1404,13 +1404,14 @@ if (burninOrScenario == "scenario") {
                          pheHoneyYieldEu=mean(colonyRecords[(tres+1):cua,"pheQueens_EuHY"]), sdpheHoneyYieldEu=sd(colonyRecords[(tres+1):cua,"pheQueens_EuHY"]),
                          pheFitnessEu=mean(colonyRecords[(tres+1):cua,"pheQueens_EuFit"]), sdpheFitnessEu=sd(colonyRecords[(tres+1):cua,"pheQueens_EuFit"]),
                          Homocigosity=mean(colonyRecords[(tres+1):cua,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(tres+1):cua,"pHomBrood"]),
-                         sdIBD=sd(colonyRecords[(tres+1):cua,"IBD"]))
+                         sdIBD=sd(colonyRecords[(tres+1):cua,"IBD"]), survivingCar=sd(colonyRecords[(tres+1):cua,"IBD"]))
     
     #Combine what we had in each dataframe with the new info, so each year the dataframe updates with new values
     MeanVarMel<-rbind(MeanVarMel,newrow1)
     MeanVarMelnI<-rbind(MeanVarMelnI,newrow2)
     MeanVarCar<-rbind(MeanVarCar,newrow3)
   } #end of year loop
+  
   CombinedDf<-rbind(MeanVarCar,MeanVarMel,MeanVarMelnI)
   save.image(paste0("Selection",Rep,"_import",param1Value,".RData"))
   
