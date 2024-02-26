@@ -111,7 +111,6 @@ if (burninOrScenario == "burnin") {
   # Founder population parameters -------------------------------------------------------------------
   nMelN = 200                  # Number of Mellifera
   nCar =200                   # Number of Carnica
-  nMelnI = 200
   nChr = 1                     # Number of chromomsome
   nDronesPerQueen = 100
   nSegSites = 100              # Number of segregating sites
@@ -120,9 +119,7 @@ if (burninOrScenario == "burnin") {
   # Number of repeats
   nYear <- 10                    # Number of years
   IrelandSize<-100              #Ireland population size
-  IrelandnISize<-100
   CarSize<-100                  #Carnica pop size
-  #LigSize<-100                  #Ligustica pop size
   nWorkers <- 10                # Number of workers in a full colony
   nDrones <- 100                 # Number of drones in a full colony (typically nWorkers * 0.2 (not in the example))
   pFathers <- nFathersPoisson   # Number of drones the queen mates with (could also be a function)
@@ -175,7 +172,6 @@ if (burninOrScenario == "burnin") {
                                 pheQueens_BritFit  = sapply(getPheno(colonies, caste = "queen"), function(x) x[1,3]),
                                 pheQueens_EuFit    = sapply(getPheno(colonies, caste = "queen"), function(x) x[1,4]),
                                 IBD = sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
-                                #Carsurviving<-sum(IBD==0) this would calculate how many carnicas of age 0 are surviving
                                 
                      ))}
   colonyRecords = NULL
@@ -208,8 +204,8 @@ if (burninOrScenario == "burnin") {
   varA <- c(0.25,0.25,0.1,0.1)
   corA <- matrix(data = c(  1.0, 0.9,  0.0, 0.0, 
                             0.9, 1.0,  0.0, 0.0, 
-                            0.0, 0.0,  1.0, -0.5, 
-                            0.0, 0.0, -0.5, 1.0), nrow = 4, byrow = TRUE)
+                            0.0, 0.0,  1.0, 0.5, 
+                            0.0, 0.0,  0.5, 1.0), nrow = 4, byrow = TRUE)
   
   SP$addTraitA(nQtlPerChr = 100, mean = mean, var = varA, corA = corA,
                name = c("QueenHYBrit", "QueenHYEu", "FitnessBrit", "FitnessEu"))
@@ -237,32 +233,23 @@ if (burninOrScenario == "burnin") {
   virginQueensMel@sex[] <- "F"
   SP$changeCaste(id = virginQueensMel@id, caste = "V")
   
-  basePopMelnI <- basePop[101:200]
-  virginQueensMelnI <- randCross(basePopMelnI, nProgeny = 1, nCrosses = nMelnI)
-  virginQueensMelnI <- SIMplyBee:::editCsdLocus(virginQueensMelnI, simParamBee = SP)
-  virginQueensMelnI@sex[] <- "F"
-  SP$changeCaste(id = virginQueensMelnI@id, caste = "V")
-  
   basePopCar <- basePop[801:900]
   virginQueensCar <- randCross(basePopCar, nProgeny = 1, nCrosses = nCar)
   virginQueensCar <- SIMplyBee:::editCsdLocus(virginQueensCar, simParamBee = SP)
   virginQueensCar@sex[] <- "F"
   SP$changeCaste(id = virginQueensCar@id, caste = "V")
   
-  virginQueens <- list(Mel =  virginQueensMel, MelnI =  virginQueensMelnI, Car =  virginQueensCar)
+  virginQueens <- list(Mel =  virginQueensMel, Car =  virginQueensCar)
   # Create drones for A. m. mellifera, A. m. mellifera cross, and A. m. carnica
   drones <- list(Mel = createDrones(x = virginQueens$Mel[(IrelandSize+1):(nMelN)], nInd = nDronesPerQueen),
-                 MelnI = createDrones(x = virginQueens$MelnI[(IrelandnISize+1):(nMelnI)], nInd = nDronesPerQueen),
                  Car = createDrones(x = virginQueens$Car[(CarSize+1):nCar], nInd = nDronesPerQueen))
   
   # Get fathers for Mel, MelCross and Car
   fathersMel <- pullDroneGroupsFromDCA(drones$Mel, n = nInd(virginQueens$Mel[1:IrelandSize]), nDrones = nFathersPoisson)
-  fathersMelnI <- pullDroneGroupsFromDCA(drones$MelnI, n = nInd(virginQueens$MelnI[1:IrelandnISize]), nDrones = nFathersPoisson)
   fathersCar <- pullDroneGroupsFromDCA(drones$Car, n = nInd(virginQueens$Car[1:CarSize]), nDrones = nFathersPoisson)
   
   # Mate virgin queens with fathers to make them queens
   queens <- list(Mel = SIMplyBee::cross(x = virginQueens$Mel[1:IrelandSize], drones = fathersMel),
-                 MelnI = SIMplyBee::cross(x = virginQueens$MelnI[1:IrelandnISize], drones = fathersMelnI),
                  Car = SIMplyBee::cross(x = virginQueens$Car[1:CarSize], drones = fathersCar))
   
   
@@ -272,24 +259,21 @@ if (burninOrScenario == "burnin") {
   # Start the year-loop ------------------------------------------------------------------
   for (year in 1:nYear) {
     print("Starting the cycle")
-    #year <- 1 (Use this to check that things are working without setting the whole for loop off )
-    #year <- year + 1
     cat(paste0("Year: ", year, "/", nYear, "\n"))
     
     # If this is the first year, create some colonies to start with
     if (year == 1) {
       print("Creating initial colonies")
       age1 <- list(Mel = createMultiColony(x = queens$Mel, n = IrelandSize),
-                   MelnI = createMultiColony(x = queens$MelnI, n = IrelandnISize),
                    Car = createMultiColony(x = queens$Car, n = CarSize))
       
       # If not, promote the age0 to age1, age1 to age2 and remove age2 colonies
     } else {
-      age2 <- list(Mel = age1$Mel, MelnI = age1$MelnI, Car = age1$Car) #, Lig = age1$Lig
-      age1 <- list(Mel = age0$Mel, MelnI = age0$MelnI, Car = age0$Car) #, Lig = age0$Lig
-      age0 <- list(Mel = NULL, MelnI = NULL, Car = NULL) #, Lig = NULL
-      age0p1 <- list(Mel = NULL, MelnI = NULL, Car = NULL) #, Lig = NULL
-      age0p2 <- list(Mel = NULL, MelnI = NULL, Car = NULL) #, Lig = NULL
+      age2 <- list(Mel = age1$Mel, Car = age1$Car) #, Lig = age1$Lig
+      age1 <- list(Mel = age0$Mel, Car = age0$Car) #, Lig = age0$Lig
+      age0 <- list(Mel = NULL, Car = NULL) #, Lig = NULL
+      age0p1 <- list(Mel = NULL, Car = NULL) #, Lig = NULL
+      age0p2 <- list(Mel = NULL, Car = NULL) #, Lig = NULL
     }
     
     # Period1 ------------------------------------------------------------------
@@ -297,12 +281,10 @@ if (burninOrScenario == "burnin") {
     print(paste0("Building up the colonies to ", nWorkers, " and ", nDrones))
     print(Sys.time())
     age1 <- list(Mel = buildUp(age1$Mel),
-                 MelnI = buildUp(age1$MelnI),
                  Car = buildUp(age1$Car))
     
     if (year > 1) {
       age2 <- list(Mel = buildUp(age2$Mel),
-                   MelnI = buildUp(age2$MelnI),
                    Car = buildUp(age2$Car))
       
     }
@@ -311,30 +293,25 @@ if (burninOrScenario == "burnin") {
     print("Splitting the colonies")
     print(Sys.time())
     tmp <- list(Mel = split(age1$Mel),
-                MelnI = split(age1$MelnI),
                 Car = split(age1$Car))
     
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
     
     
     # The queens of the splits are 0 years old
-    age0p1 <- list(Mel = tmp$Mel$split, MelnI = tmp$MelnI$split, Car = tmp$Car$split) #,Lig = tmp$Lig$split
+    age0p1 <- list(Mel = tmp$Mel$split, Car = tmp$Car$split)
     
     if (year > 1) {
       # Split all age2 colonies
       tmp <- list(Mel = split(age2$Mel),
-                  MelnI = split(age2$MelnI),
                   Car = split(age2$Car))
       
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant
       ) 
       # The queens of the splits are 0 years old
       age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$split),
-                     MelnI = c(age0p1$MelnI, tmp$MelnI$split),
                      Car = c(age0p1$Car, tmp$Car$split))
       
     }
@@ -344,29 +321,22 @@ if (burninOrScenario == "burnin") {
     # Sample colony for the virgin queens
     print("Create virgin queens, period 1")
     print(Sys.time())
-    # virginDonor <- list(Mel = sample.int(n = nColonies(age1$Mel), size = 1),
-    #                    MelnI = sample.int(n = nColonies(age1$MelnI), size = 1),
-    #                   Car = sample.int(n = nColonies(age1$Car), size = 1))
-    
+   
     # Virgin queens for splits!
     
     
     pImport<-0
     
     virginQueens <- list(Mel = createVirginQueens(age1$Mel, collapse=T, nInd=10),
-                         MelnI = createVirginQueens(age1$MelnI, collapse=T, nInd=10),
                          Car = createVirginQueens(age1$Car, collapse=T, nInd=10))
     
     virginQueens<-list(Mel = mergePops(virginQueens$Mel),
-                       MelnI = mergePops(virginQueens$MelnI),
                        Car = mergePops(virginQueens$Car))
     
     #requeen with carnica and mellifera for Mel and carnica for Car
     nColoniesMel<-nColonies(age0p1$Mel) 
     nColoniesCar<-nColonies(age0p1$Car)
-    nColoniesMelnI<-nColonies(age0p1$MelnI)
     age0p1 <- list(Mel = reQueen(age0p1$Mel, queen = virginQueens$Mel[sample(1:nInd(virginQueens$Mel), size = nColoniesMel, replace = FALSE)]),
-                   MelnI = reQueen(age0p1$MelnI, queen = virginQueens$MelnI[sample(1:nInd(virginQueens$MelnI), size = nColoniesMelnI, replace = FALSE)]),
                    Car = reQueen(age0p1$Car, queen = virginQueens$Car[sample(1:nInd(virginQueens$Car), size = nColoniesCar, replace = FALSE)]))
     
     
@@ -376,23 +346,18 @@ if (burninOrScenario == "burnin") {
     print("Swarm colonies, P1")
     print(Sys.time())
     tmp <- list(Mel = pullColonies(age1$Mel, p = p1swarm),
-                MelnI = pullColonies(age1$MelnI, p = p1swarm),
                 Car = pullColonies(age1$Car, p = p1swarm))
     
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
     
     tmp <- list(Mel = swarm(tmp$Mel$pulled),
-                MelnI = swarm(tmp$MelnI$pulled),
                 Car = swarm(tmp$Car$pulled))
     
     age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$remnant),
-                   MelnI = c(age0p1$MelnI, tmp$MelnI$remnant),
                    Car = c(age0p1$Car, tmp$Car$remnant))
     
     age1 <- list(Mel = c(age1$Mel, tmp$Mel$swarm),
-                 MelnI = c(age1$MelnI, tmp$MelnI$swarm),
                  Car = c(age1$Car, tmp$Car$swarm))
     
     
@@ -400,23 +365,18 @@ if (burninOrScenario == "burnin") {
     if (year > 1) {
       # Swarm a percentage of age2 colonies
       tmp <- list(Mel = pullColonies(age2$Mel, p = p1swarm),
-                  MelnI = pullColonies(age2$MelnI, p = p1swarm),
                   Car = pullColonies(age2$Car, p = p1swarm))
       
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
       
       tmp <- list(Mel = swarm(tmp$Mel$pulled),
-                  MelnI = swarm(tmp$MelnI$pulled),
                   Car = swarm(tmp$Car$pulled))
       
       age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$remnant),
-                     MelnI = c(age0p1$MelnI, tmp$MelnI$remnant),
                      Car = c(age0p1$Car, tmp$Car$remnant))
       
       age2 <- list(Mel = c(age2$Mel, tmp$Mel$swarm),
-                   MelnI = c(age2$MelnI, tmp$MelnI$swarm),
                    Car = c(age2$Car, tmp$Car$swarm))
       
     }
@@ -425,40 +385,32 @@ if (burninOrScenario == "burnin") {
     print("Supersede colonies, P1")
     print(Sys.time())
     tmp <- list(Mel = pullColonies(age1$Mel, p = p1supersede),
-                MelnI = pullColonies(age1$MelnI, p = p1supersede),
                 Car = pullColonies(age1$Car, p = p1supersede))
-    #,Lig = pullColonies(age1$Lig, p = p1supersede))
+   
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
-    #,Lig = tmp$Lig$remnant)
+   
     tmp <- list(Mel = supersede(tmp$Mel$pulled),
-                MelnI = supersede(tmp$MelnI$pulled),
                 Car = supersede(tmp$Car$pulled))
-    #,Lig = supersede(tmp$Lig$pulled))
+   
     age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel),
-                   MelnI = c(age0p1$MelnI, tmp$MelnI),
                    Car = c(age0p1$Car, tmp$Car))
     
     
     if (year > 1) {
       # Supersede age2 colonies
       tmp <- list(Mel = pullColonies(age2$Mel, p = p1supersede),
-                  MelnI = pullColonies(age2$MelnI, p = p1supersede),
                   Car = pullColonies(age2$Car, p = p1supersede))
-      #,Lig = pullColonies(age2$Lig, p = p1supersede))
+     
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
-      #,Lig = tmp$Lig$remnant)
+      
       tmp <- list(Mel = supersede(tmp$Mel$pulled),
-                  MelnI = supersede(tmp$MelnI$pulled),
                   Car = supersede(tmp$Car$pulled))
-      #,Lig = supersede(tmp$Lig$pulled))
+     
       age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel),
-                     MelnI = c(age0p1$MelnI, tmp$MelnI),
                      Car = c(age0p1$Car, tmp$Car))
-      #,Lig = c(age0p1$Lig, tmp$Lig))
+      
     }
     
     # Mate the split colonies
@@ -469,29 +421,23 @@ if (burninOrScenario == "burnin") {
       age0p1$Mel <- cross(age0p1$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p1$Mel), nDrones = nFathersPoisson))
       DCACar <- createDCA(age1$Car)
       age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
-      DCAMelnI <- createDCA(age1$MelnI)
-      age0p1$MelnI <- cross(age0p1$MelnI, drones = pullDroneGroupsFromDCA(DCA = DCAMelnI, n = nColonies(age0p1$MelnI), nDrones = nFathersPoisson))
-    } else {
+        } else {
       DCAMel <- createDCA(c(age1$Mel, age2$Mel))
       age0p1$Mel <- cross(age0p1$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p1$Mel), nDrones = nFathersPoisson))
       DCACar <- createDCA(c(age1$Car, age2$Car))
       age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
-      DCAMelnI <- createDCA(c(age1$MelnI, age2$MelnI)) 
-      age0p1$MelnI <- cross(age0p1$MelnI, drones = pullDroneGroupsFromDCA(DCA = DCAMelnI, n = nColonies(age0p1$MelnI), nDrones = nFathersPoisson))
-    }
+        }
     
     # Collapse
     print("Collapse colonies, P1")
     print(Sys.time())
     age1 <- list(Mel = selectColonies(age1$Mel, p = 1 - p1collapse),
-                 MelnI = selectColonies(age1$MelnI, p = 1 - p1collapse),
                  Car = selectColonies(age1$Car, p = 1 - p1collapse))
-    #,Lig = selectColonies(age1$Lig, p = 1 - p1collapse))
+
     if (year > 1) {
       age2 <- list(Mel = selectColonies(age2$Mel, p = 1 - p1collapse),
-                   MelnI = selectColonies(age2$MelnI, p = 1 - p1collapse),
                    Car = selectColonies(age2$Car, p = 1 - p1collapse))
-      #,Lig = selectColonies(age2$Lig, p = 1 - p1collapse))
+
     }
     
     # Period2 ------------------------------------------------------------------
@@ -501,48 +447,38 @@ if (burninOrScenario == "burnin") {
     print("Swarm colonies, P2")
     print(Sys.time())
     tmp <- list(Mel = pullColonies(age1$Mel, p = p2swarm),
-                MelnI = pullColonies(age1$MelnI, p = p2swarm),
                 Car = pullColonies(age1$Car, p = p2swarm))
     
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
     
     tmp <- list(Mel = swarm(tmp$Mel$pulled),
-                MelnI = swarm(tmp$MelnI$pulled),
                 Car = swarm(tmp$Car$pulled))
     
     # The queens of the remnant colonies are of age 0
     age0p2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
     
     age1 <- list(Mel = c(age1$Mel, tmp$Mel$swarm),
-                 MelnI = c(age1$MelnI, tmp$MelnI$swarm),
                  Car = c(age1$Car, tmp$Car$swarm))
     
     
     if (year > 1) {
       # Swarm a percentage of age2 colonies
       tmp <- list(Mel = pullColonies(age2$Mel, p = p2swarm),
-                  MelnI = pullColonies(age2$MelnI, p = p2swarm),
                   Car = pullColonies(age2$Car, p = p2swarm))
       
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
       
       tmp <- list(Mel = swarm(tmp$Mel$pulled),
-                  MelnI = swarm(tmp$MelnI$pulled),
                   Car = swarm(tmp$Car$pulled))
       
       # The queens of the remnant colonies are of age 0
       age0p2 <- list(Mel = tmp$Mel$remnant,
-                     MelnI = tmp$MelnI$remnant,
                      Car = tmp$Car$remnant)
       
       age2 <- list(Mel = c(age2$Mel, tmp$Mel$swarm),
-                   MelnI = c(age2$MelnI, tmp$MelnI$swarm),
                    Car = c(age2$Car, tmp$Car$swarm))
       
     }
@@ -552,40 +488,32 @@ if (burninOrScenario == "burnin") {
     print(Sys.time())
     
     tmp <- list(Mel = pullColonies(age1$Mel, p = p2supersede),
-                MelnI = pullColonies(age1$MelnI, p = p2supersede),
                 Car = pullColonies(age1$Car, p = p2supersede))
     
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
     
     tmp <- list(Mel = supersede(tmp$Mel$pulled),
-                MelnI = supersede(tmp$MelnI$pulled),
                 Car = supersede(tmp$Car$pulled))
     
     # The queens of superseded colonies are of age 0
     age0p2 <- list(Mel = c(age0p2$Mel, tmp$Mel),
-                   MelnI = c(age0p2$MelnI, tmp$MelnI),
                    Car = c(age0p2$Car, tmp$Car))
     
     
     if (year > 1) {
       # Supersede a part of age2 colonies
       tmp <- list(Mel = pullColonies(age2$Mel, p = p2supersede),
-                  MelnI = pullColonies(age2$MelnI, p = p2supersede),
                   Car = pullColonies(age2$Car, p = p2supersede))
       
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
       
       tmp <- list(Mel = supersede(tmp$Mel$pulled),
-                  MelnI = supersede(tmp$MelnI$pulled),
                   Car = supersede(tmp$Car$pulled))
       
       # The queens of superseded colonies are of age 0
       age0p2 <- list(Mel = c(age0p2$Mel, tmp$Mel),
-                     MelnI = c(age0p2$MelnI, tmp$MelnI),
                      Car = c(age0p2$Car, tmp$Car))
       
     }
@@ -595,12 +523,10 @@ if (burninOrScenario == "burnin") {
     print(Sys.time())
     
     age1$Mel <- replaceDrones(age1$Mel)
-    age1$MelnI <- replaceDrones(age1$MelnI)
     age1$Car <- replaceDrones(age1$Car)
     
     if (year > 1) {
       age2$Mel <- replaceDrones(age2$Mel)
-      age2$MelnI <- replaceDrones(age2$MelnI)
       age2$Car <- replaceDrones(age2$Car)
       
     }
@@ -616,8 +542,6 @@ if (burninOrScenario == "burnin") {
       age0p2$Mel <- cross(age0p2$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p2$Mel), nDrones = nFathersPoisson))
       DCACar <- createDCA(age1$Car)
       age0p2$Car <- cross(age0p2$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p2$Car), nDrones = nFathersPoisson))
-      DCAMelnI <- createDCA(age1$MelnI)
-      age0p2$MelnI <- cross(age0p2$MelnI, drones = pullDroneGroupsFromDCA(DCA = DCAMelnI, n = nColonies(age0p2$MelnI), nDrones = nFathersPoisson))
     } else {
       DCAMel <- createDCA(c(age1$Mel, age2$Mel))
       fathersMel <- pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p2$Mel), nDrones = nFathersPoisson)
@@ -625,26 +549,20 @@ if (burninOrScenario == "burnin") {
       DCACar <- createDCA(c(age1$Car, age2$Car))
       fathersCar <-  pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p2$Car), nDrones = nFathersPoisson)
       age0p2$Car <- cross(age0p2$Car, drones = fathersCar)
-      DCAMelnI <- createDCA(c(age1$MelnI, age2$MelnI))
-      fathersMelnI <-  pullDroneGroupsFromDCA(DCA = DCAMelnI, n = nColonies(age0p2$MelnI), nDrones = nFathersPoisson)
-      age0p2$MelnI <- cross(age0p2$MelnI, drones = fathersMelnI)
     }
     
     # Collapse
     age1 <- list(Mel = selectColonies(age1$Mel, p = 1 - p2collapse),
-                 MelnI = selectColonies(age1$MelnI, p = 1 - p2collapse),
                  Car = selectColonies(age1$Car, p = 1 - p2collapse))
     
     if (year > 1) {
       age2 <- list(Mel = selectColonies(age2$Mel, p = 1 - p2collapse),
-                   MelnI = selectColonies(age2$MelnI, p = 1 - p2collapse),
                    Car = selectColonies(age2$Car, p = 1 - p2collapse))
       
     }
     
     # Merge all age 0 colonies (from both periods)
     age0 <- list(Mel = c(age0p1$Mel, age0p2$Mel),
-                 MelnI = c(age0p1$MelnI, age0p2$MelnI),
                  Car = c(age0p1$Car, age0p2$Car))
     
     
@@ -670,16 +588,6 @@ if (burninOrScenario == "burnin") {
     Nselectcolon1<-round(length(queensID1)*(1-p3collapseAge1)) #calculate how many colonies will collapse
     age1MelqueensID<-queensID1[1:Nselectcolon1] #select the queens ids that will not collapse
     
-    MelnIBritFit<-sapply(getPheno(age0$MelnI, caste = "queen"), function(x) x[1,3])#select on Mel Brit fitness
-    queensID2<-names(sort(MelnIBritFit,T))
-    Nselectcolon2<-round(length(queensID2)*(1-p3collapseAge0)) #calculate how many colonies will collapse
-    age0MelnIqueensID<-queensID2[1:Nselectcolon2] #select the queens ids that will not collapse
-    
-    MelnIBritFit1<-sapply(getPheno(age1$MelnI, caste = "queen"), function(x) x[1,3])#select on Mel Brit fitness
-    queensID3<-names(sort(MelnIBritFit1,T))
-    Nselectcolon3<-round(length(queensID3)*(1-p3collapseAge1)) #calculate how many colonies will collapse
-    age1MelnIqueensID<-queensID3[1:Nselectcolon3] #select the queens ids that will not collapse
-    
     CarEuFit<-sapply(getPheno(age0$Car, caste = "queen"), function(x) x[1,4])#select on Mel Brit fitness
     queensID<-names(sort(CarEuFit,T))
     Nselectcolon<-round(length(queensID)*(1-p3collapseAge0)) #calculate how many colonies will collapse
@@ -692,14 +600,12 @@ if (burninOrScenario == "burnin") {
     
     #Collapse 
     age0 <- list(Mel = selectColonies(age0$Mel, ID = age0MelqueensID),
-                 MelnI = selectColonies(age0$MelnI, ID = age0MelnIqueensID),
                  Car = selectColonies(age0$Car, ID = age0CarqueensID))
     
     age1 <- list(Mel = selectColonies(age1$Mel, ID = age1MelqueensID),
-                 MelnI = selectColonies(age1$MelnI, ID = age1MelnIqueensID),
                  Car = selectColonies(age1$Car, ID= age1CarqueensID))
     
-    age2 <- list(Mel = NULL, MelnI = NULL, Car = NULL) #We don't need this but just to show the workflow!!!
+    age2 <- list(Mel = NULL, Car = NULL) #We don't need this but just to show the workflow!!!
     
     # Maintain the number of colonies ------------------------------------------
     # Keep all of age1, age0 swarmed so we build it up with some splits, while we remove (sell) the other splits
@@ -707,11 +613,10 @@ if (burninOrScenario == "burnin") {
     print(Sys.time())
     
     age0$Mel <- maintainIrelandSize(age0 = age0$Mel, age1 = age1$Mel)
-    age0$MelnI <- maintainIrelandSize(age0 = age0$MelnI, age1 = age1$MelnI)
     age0$Car <- maintainCarSize(age0 = age0$Car, age1 = age1$Car)
     
     
-    for (subspecies in c("Mel", "MelnI", "Car")) {     
+    for (subspecies in c("Mel", "Car")) {     
       if ((nColonies(age0[[subspecies]]) + nColonies(age1[[subspecies]])) == IrelandSize
           | (nColonies(age0[[subspecies]]) + nColonies(age1[[subspecies]])) == CarSize) 
       {
@@ -737,8 +642,6 @@ if (burninOrScenario == "burnin") {
       colnames(MeanVarMel)<-columnheaders
       MeanVarCar <- data.frame(matrix(ncol = length(columnheaders), nrow = 0)) #dataframe for carnica
       colnames(MeanVarCar)<-columnheaders
-      MeanVarMelnI <- data.frame(matrix(ncol = length(columnheaders), nrow = 0)) #dataframe for carnica
-      colnames(MeanVarMelnI)<-columnheaders
     } 
     
     if (year==1){
@@ -768,14 +671,14 @@ if (burninOrScenario == "burnin") {
                          Homocigosity=mean(colonyRecords[(uno+1):dos,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(uno+1):dos,"pHomBrood"]),
                          sdIBD=sd(colonyRecords[(uno+1):dos,"IBD"]),survivingCar=sd(colonyRecords[(uno+1):dos,"IBD"]))
     
-    #record values for Mellifera without imports population
-    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$MelnI, year = year, population = "MelnI", Rep=Rep)
-    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$MelnI, year = year, population = "MelnI", Rep=Rep)
-    tres<-nrow(colonyRecords)#this is to show where to end recording values on the dataframe
     
+    #record values of Carnica population
+    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$Car, year = year, population = "Car", Rep=Rep)
+    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$Car, year = year, population = "Car", Rep=Rep)
+    tres<-nrow(colonyRecords)
     
-    #create a dataframe with the mellifera mean IBD, variance of IBD, mean Honey yield, mean fitness and mean homocigosity
-    newrow2<- data.frame(MeanIBD=mean(colonyRecords[(dos+1):tres,"IBD"]), VarIBD=var(colonyRecords[(dos+1):tres,"IBD"]), Year=year,Rep=Rep,Population="MelnI",
+    #create a dataframe with the carnica mean IBD, variance of IBD, mean Honey yield, mean fitness and mean homocigosity
+    newrow2<- data.frame(MeanIBD=mean(colonyRecords[(dos+1):tres,"IBD"]), VarIBD=var(colonyRecords[(dos+1):tres,"IBD"]), Year=year,Rep=Rep,Population="Car",
                          HoneyYieldBrit=mean(colonyRecords[(dos+1):tres,"gvQueens_BritHY"]), sdHoneyYieldBrit=sd(colonyRecords[(dos+1):tres,"gvQueens_BritHY"]),
                          FitnessBrit=mean(colonyRecords[(dos+1):tres,"gvQueens_BritFit"]),sdFitnessBrit=sd(colonyRecords[(dos+1):tres,"gvQueens_BritFit"]),
                          HoneyYieldEu=mean(colonyRecords[(dos+1):tres,"gvQueens_EuHY"]), sdHoneyYieldEu=sd(colonyRecords[(dos+1):tres,"gvQueens_EuHY"]),
@@ -787,28 +690,9 @@ if (burninOrScenario == "burnin") {
                          Homocigosity=mean(colonyRecords[(dos+1):tres,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(dos+1):tres,"pHomBrood"]),
                          sdIBD=sd(colonyRecords[(dos+1):tres,"IBD"]),survivingCar=sd(colonyRecords[(dos+1):tres,"IBD"]))
     
-    #record values of Carnica population
-    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$Car, year = year, population = "Car", Rep=Rep)
-    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$Car, year = year, population = "Car", Rep=Rep)
-    cua<-nrow(colonyRecords)
-    
-    #create a dataframe with the carnica mean IBD, variance of IBD, mean Honey yield, mean fitness and mean homocigosity
-    newrow3<- data.frame(MeanIBD=mean(colonyRecords[(tres+1):cua,"IBD"]), VarIBD=var(colonyRecords[(tres+1):cua,"IBD"]), Year=year,Rep=Rep,Population="Car",
-                         HoneyYieldBrit=mean(colonyRecords[(tres+1):cua,"gvQueens_BritHY"]), sdHoneyYieldBrit=sd(colonyRecords[(tres+1):cua,"gvQueens_BritHY"]),
-                         FitnessBrit=mean(colonyRecords[(tres+1):cua,"gvQueens_BritFit"]),sdFitnessBrit=sd(colonyRecords[(tres+1):cua,"gvQueens_BritFit"]),
-                         HoneyYieldEu=mean(colonyRecords[(tres+1):cua,"gvQueens_EuHY"]), sdHoneyYieldEu=sd(colonyRecords[(tres+1):cua,"gvQueens_EuHY"]),
-                         FitnessEu=mean(colonyRecords[(tres+1):cua,"gvQueens_EuFit"]), sdFitnessEu=sd(colonyRecords[(tres+1):cua,"gvQueens_EuFit"]),
-                         pheHoneyYieldBrit=mean(colonyRecords[(tres+1):cua,"pheQueens_BritHY"]), sdpheHoneyYieldBrit=sd(colonyRecords[(tres+1):cua,"pheQueens_BritHY"]),
-                         pheFitnessBrit=mean(colonyRecords[(tres+1):cua,"pheQueens_BritFit"]),sdpheFitnessBrit=sd(colonyRecords[(tres+1):cua,"pheQueens_BritFit"]),
-                         pheHoneyYieldEu=mean(colonyRecords[(tres+1):cua,"pheQueens_EuHY"]), sdpheHoneyYieldEu=sd(colonyRecords[(tres+1):cua,"pheQueens_EuHY"]),
-                         pheFitnessEu=mean(colonyRecords[(tres+1):cua,"pheQueens_EuFit"]), sdpheFitnessEu=sd(colonyRecords[(tres+1):cua,"pheQueens_EuFit"]),
-                         Homocigosity=mean(colonyRecords[(tres+1):cua,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(tres+1):cua,"pHomBrood"]),
-                         sdIBD=sd(colonyRecords[(tres+1):cua,"IBD"]),survivingCar=sd(colonyRecords[(tres+1):cua,"IBD"]))
-    
     #Combine what we had in each dataframe with the new info, so each year the dataframe updates with new values
     MeanVarMel<-rbind(MeanVarMel,newrow1)
-    MeanVarMelnI<-rbind(MeanVarMelnI,newrow2)
-    MeanVarCar<-rbind(MeanVarCar,newrow3)
+    MeanVarCar<-rbind(MeanVarCar,newrow2)
     
   } # Year-loop
   
@@ -872,16 +756,15 @@ if (burninOrScenario == "scenario") {
     if (year == 1) {
       print("Creating initial colonies")
       age1 <- list(Mel = createMultiColony(x = queens$Mel, n = IrelandSize),
-                   MelnI = createMultiColony(x = queens$MelnI, n = IrelandSize),
                    Car = createMultiColony(x = queens$Car, n = CarSize))
       
       # If not, promote the age0 to age1, age1 to age2 and remove age2 colonies
     } else {
-      age2 <- list(Mel = age1$Mel, MelnI = age1$MelnI, Car = age1$Car) #, Lig = age1$Lig
-      age1 <- list(Mel = age0$Mel, MelnI = age0$MelnI, Car = age0$Car) #, Lig = age0$Lig
-      age0 <- list(Mel = NULL, MelnI = NULL, Car = NULL) #, Lig = NULL
-      age0p1 <- list(Mel = NULL, MelnI = NULL, Car = NULL) #, Lig = NULL
-      age0p2 <- list(Mel = NULL, MelnI = NULL, Car = NULL) #, Lig = NULL
+      age2 <- list(Mel = age1$Mel, Car = age1$Car) #, Lig = age1$Lig
+      age1 <- list(Mel = age0$Mel, Car = age0$Car) #, Lig = age0$Lig
+      age0 <- list(Mel = NULL, Car = NULL) #, Lig = NULL
+      age0p1 <- list(Mel = NULL, Car = NULL) #, Lig = NULL
+      age0p2 <- list(Mel = NULL, Car = NULL) #, Lig = NULL
     }
     
     # Period1 ------------------------------------------------------------------
@@ -889,12 +772,10 @@ if (burninOrScenario == "scenario") {
     print(paste0("Building up the colonies to ", nWorkers, " and ", nDrones))
     print(Sys.time())
     age1 <- list(Mel = buildUp(age1$Mel),
-                 MelnI = buildUp(age1$MelnI),
                  Car = buildUp(age1$Car))
     
     if (year > 1) {
       age2 <- list(Mel = buildUp(age2$Mel),
-                   MelnI = buildUp(age2$MelnI),
                    Car = buildUp(age2$Car))
       
     }
@@ -903,32 +784,26 @@ if (burninOrScenario == "scenario") {
     print("Splitting the colonies")
     print(Sys.time())
     tmp <- list(Mel = split(age1$Mel),
-                MelnI = split(age1$MelnI),
                 Car = split(age1$Car))
     
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
     
     
     # The queens of the splits are 0 years old
-    age0p1 <- list(Mel = tmp$Mel$split, MelnI = tmp$MelnI$split, Car = tmp$Car$split) #,Lig = tmp$Lig$split
+    age0p1 <- list(Mel = tmp$Mel$split, Car = tmp$Car$split) 
     
     if (year > 1) {
       
       tmp <- list(Mel = split(age2$Mel),
-                  MelnI = split(age2$MelnI),
                   Car = split(age2$Car))
       
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant
       )
       # The queens of the splits are 0 years old
       age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$split),
-                     MelnI = c(age0p1$MelnI, tmp$MelnI$split),
                      Car = c(age0p1$Car, tmp$Car$split))
-      #,Lig = c(age0p1$Lig, tmp$Lig$split))
     }
     
     
@@ -946,22 +821,18 @@ if (burninOrScenario == "scenario") {
     IdImportColonies<-getId(tmp$pulled) #get the ids of the imported colonies
     age0p1 <- list(Mel = tmp$remnant,
                    MelImport = tmp$pulled,
-                   MelnI = c(age0p1$MelnI, tmp$MelnI$split),
                    Car = c(age0p1$Car, tmp$Car$split))
     
     
     virginQueens <- list(Mel = createVirginQueens(age1$Mel, collapse=T, nInd=10),
-                         MelnI = createVirginQueens(age1$MelnI, collapse=T, nInd=10),
                          Car = createVirginQueens(age1$Car, collapse=T, nInd=10))
     
     virginQueens<-list(Mel = mergePops(virginQueens$Mel),
-                       MelnI = mergePops(virginQueens$MelnI),
                        Car = mergePops(virginQueens$Car))
     
     carqueens<-nColonies(age0p1$Car)+nColonies(age0p1$MelImport)
     
     virginQueens<-list(Mel = virginQueens$Mel[sample(1:nInd(virginQueens$Mel), size = nColonies(age0p1$Mel), replace = FALSE)],
-                       MelnI =  virginQueens$MelnI[sample(1:nInd(virginQueens$MelnI), size = nColonies(age0p1$MelnI), replace = FALSE)],
                        Car = virginQueens$Car[sample(1:nInd(virginQueens$Car), size = carqueens, replace = FALSE)])
     
     
@@ -969,10 +840,8 @@ if (burninOrScenario == "scenario") {
     #requeen with carnica and mellifera for Mel and carnica for Car
     nColoniesMelImport<-nColonies(age0p1$MelImport)
     nColoniesCar<-nColonies(age0p1$Car)+nColonies(age0p1$MelImport)
-    nColoniesMelnI<-nColonies(age0p1$MelnI)
     age0p1 <- list(Mel = c(reQueen(age0p1$Mel, queen = (virginQueens$Mel)) ,
                            reQueen(age0p1$MelImport, queen = c((virginQueens$Car)[1:nColoniesMelImport]))),
-                   MelnI = reQueen(age0p1$MelnI, queen = virginQueens$MelnI[1:nColoniesMelnI]),
                    Car = reQueen(age0p1$Car, queen = virginQueens$Car[(nColoniesMelImport+1):nColoniesCar]))
     
     
@@ -980,23 +849,18 @@ if (burninOrScenario == "scenario") {
     print("Swarm colonies, P1")
     print(Sys.time())
     tmp <- list(Mel = pullColonies(age1$Mel, p = p1swarm),
-                MelnI = pullColonies(age1$MelnI, p = p1swarm),
                 Car = pullColonies(age1$Car, p = p1swarm))
     
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
     
     tmp <- list(Mel = swarm(tmp$Mel$pulled),
-                MelnI = swarm(tmp$MelnI$pulled),
                 Car = swarm(tmp$Car$pulled))
     
     age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$remnant),
-                   MelnI = c(age0p1$MelnI, tmp$MelnI$remnant),
                    Car = c(age0p1$Car, tmp$Car$remnant))
     
     age1 <- list(Mel = c(age1$Mel, tmp$Mel$swarm),
-                 MelnI = c(age1$MelnI, tmp$MelnI$swarm),
                  Car = c(age1$Car, tmp$Car$swarm))
     
     
@@ -1004,23 +868,18 @@ if (burninOrScenario == "scenario") {
     if (year > 1) {
       # Swarm a percentage of age2 colonies
       tmp <- list(Mel = pullColonies(age2$Mel, p = p1swarm),
-                  MelnI = pullColonies(age2$MelnI, p = p1swarm),
                   Car = pullColonies(age2$Car, p = p1swarm))
       
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
       
       tmp <- list(Mel = swarm(tmp$Mel$pulled),
-                  MelnI = swarm(tmp$MelnI$pulled),
                   Car = swarm(tmp$Car$pulled))
       
       age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$remnant),
-                     MelnI = c(age0p1$MelnI, tmp$MelnI$remnant),
                      Car = c(age0p1$Car, tmp$Car$remnant))
       
       age2 <- list(Mel = c(age2$Mel, tmp$Mel$swarm),
-                   MelnI = c(age2$MelnI, tmp$MelnI$swarm),
                    Car = c(age2$Car, tmp$Car$swarm))
       
     }
@@ -1029,38 +888,30 @@ if (burninOrScenario == "scenario") {
     print("Supersede colonies, P1")
     print(Sys.time())
     tmp <- list(Mel = pullColonies(age1$Mel, p = p1supersede),
-                MelnI = pullColonies(age1$MelnI, p = p1supersede),
                 Car = pullColonies(age1$Car, p = p1supersede))
     
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
     
     tmp <- list(Mel = supersede(tmp$Mel$pulled),
-                MelnI = supersede(tmp$MelnI$pulled),
                 Car = supersede(tmp$Car$pulled))
     
     age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel),
-                   MelnI = c(age0p1$MelnI, tmp$MelnI),
                    Car = c(age0p1$Car, tmp$Car))
     
     
     if (year > 1) {
       # Supersede age2 colonies
       tmp <- list(Mel = pullColonies(age2$Mel, p = p1supersede),
-                  MelnI = pullColonies(age2$MelnI, p = p1supersede),
                   Car = pullColonies(age2$Car, p = p1supersede))
       
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
       
       tmp <- list(Mel = supersede(tmp$Mel$pulled),
-                  MelnI = supersede(tmp$MelnI$pulled),
                   Car = supersede(tmp$Car$pulled))
       
       age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel),
-                     MelnI = c(age0p1$MelnI, tmp$MelnI),
                      Car = c(age0p1$Car, tmp$Car))
       
     }
@@ -1073,27 +924,21 @@ if (burninOrScenario == "scenario") {
       age0p1$Mel <- cross(age0p1$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p1$Mel), nDrones = nFathersPoisson))
       DCACar <- createDCA(age1$Car)
       age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
-      DCAMelnI <- createDCA(age1$MelnI)
-      age0p1$MelnI <- cross(age0p1$MelnI, drones = pullDroneGroupsFromDCA(DCA = DCAMelnI, n = nColonies(age0p1$MelnI), nDrones = nFathersPoisson))
     } else {
       DCAMel <- createDCA(c(age1$Mel, age2$Mel))
       age0p1$Mel <- cross(age0p1$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p1$Mel), nDrones = nFathersPoisson))
       DCACar <- createDCA(c(age1$Car, age2$Car))
       age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
-      DCAMelnI <- createDCA(c(age1$MelnI, age2$MelnI)) 
-      age0p1$MelnI <- cross(age0p1$MelnI, drones = pullDroneGroupsFromDCA(DCA = DCAMelnI, n = nColonies(age0p1$MelnI), nDrones = nFathersPoisson))
     }
     
     # Collapse
     print("Collapse colonies, P1")
     print(Sys.time())
     age1 <- list(Mel = selectColonies(age1$Mel, p = 1 - p1collapse),
-                 MelnI = selectColonies(age1$MelnI, p = 1 - p1collapse),
                  Car = selectColonies(age1$Car, p = 1 - p1collapse))
     
     if (year > 1) {
       age2 <- list(Mel = selectColonies(age2$Mel, p = 1 - p1collapse),
-                   MelnI = selectColonies(age2$MelnI, p = 1 - p1collapse),
                    Car = selectColonies(age2$Car, p = 1 - p1collapse))
       
     }
@@ -1105,48 +950,38 @@ if (burninOrScenario == "scenario") {
     print("Swarm colonies, P2")
     print(Sys.time())
     tmp <- list(Mel = pullColonies(age1$Mel, p = p2swarm),
-                MelnI = pullColonies(age1$MelnI, p = p2swarm),
                 Car = pullColonies(age1$Car, p = p2swarm))
     
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
     
     tmp <- list(Mel = swarm(tmp$Mel$pulled),
-                MelnI = swarm(tmp$MelnI$pulled),
                 Car = swarm(tmp$Car$pulled))
     
     # The queens of the remnant colonies are of age 0
     age0p2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
     
     age1 <- list(Mel = c(age1$Mel, tmp$Mel$swarm),
-                 MelnI = c(age1$MelnI, tmp$MelnI$swarm),
                  Car = c(age1$Car, tmp$Car$swarm))
     
     
     if (year > 1) {
       # Swarm a percentage of age2 colonies
       tmp <- list(Mel = pullColonies(age2$Mel, p = p2swarm),
-                  MelnI = pullColonies(age2$MelnI, p = p2swarm),
                   Car = pullColonies(age2$Car, p = p2swarm))
       
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
       
       tmp <- list(Mel = swarm(tmp$Mel$pulled),
-                  MelnI = swarm(tmp$MelnI$pulled),
                   Car = swarm(tmp$Car$pulled))
       
       # The queens of the remnant colonies are of age 0
       age0p2 <- list(Mel = tmp$Mel$remnant,
-                     MelnI = tmp$MelnI$remnant,
                      Car = tmp$Car$remnant)
       
       age2 <- list(Mel = c(age2$Mel, tmp$Mel$swarm),
-                   MelnI = c(age2$MelnI, tmp$MelnI$swarm),
                    Car = c(age2$Car, tmp$Car$swarm))
       
     }
@@ -1156,34 +991,26 @@ if (burninOrScenario == "scenario") {
     print(Sys.time())
     
     tmp <- list(Mel = pullColonies(age1$Mel, p = p2supersede),
-                MelnI = pullColonies(age1$MelnI, p = p2supersede),
                 Car = pullColonies(age1$Car, p = p2supersede))
     age1 <- list(Mel = tmp$Mel$remnant,
-                 MelnI = tmp$MelnI$remnant,
                  Car = tmp$Car$remnant)
     tmp <- list(Mel = supersede(tmp$Mel$pulled),
-                MelnI = supersede(tmp$MelnI$pulled),
                 Car = supersede(tmp$Car$pulled))
     # The queens of superseded colonies are of age 0
     age0p2 <- list(Mel = c(age0p2$Mel, tmp$Mel),
-                   MelnI = c(age0p2$MelnI, tmp$MelnI),
                    Car = c(age0p2$Car, tmp$Car))
     
     
     if (year > 1) {
       # Supersede a part of age2 colonies
       tmp <- list(Mel = pullColonies(age2$Mel, p = p2supersede),
-                  MelnI = pullColonies(age2$MelnI, p = p2supersede),
                   Car = pullColonies(age2$Car, p = p2supersede))
       age2 <- list(Mel = tmp$Mel$remnant,
-                   MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant)
       tmp <- list(Mel = supersede(tmp$Mel$pulled),
-                  MelnI = supersede(tmp$MelnI$pulled),
                   Car = supersede(tmp$Car$pulled))
       # The queens of superseded colonies are of age 0
       age0p2 <- list(Mel = c(age0p2$Mel, tmp$Mel),
-                     MelnI = c(age0p2$MelnI, tmp$MelnI),
                      Car = c(age0p2$Car, tmp$Car))
       
     }
@@ -1193,12 +1020,10 @@ if (burninOrScenario == "scenario") {
     print(Sys.time())
     
     age1$Mel <- replaceDrones(age1$Mel)
-    age1$MelnI <- replaceDrones(age1$MelnI)
     age1$Car <- replaceDrones(age1$Car)
     
     if (year > 1) {
       age2$Mel <- replaceDrones(age2$Mel)
-      age2$MelnI <- replaceDrones(age2$MelnI)
       age2$Car <- replaceDrones(age2$Car)
     }
     
@@ -1213,8 +1038,6 @@ if (burninOrScenario == "scenario") {
       age0p2$Mel <- cross(age0p2$Mel, drones = pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p2$Mel), nDrones = nFathersPoisson))
       DCACar <- createDCA(age1$Car)
       age0p2$Car <- cross(age0p2$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p2$Car), nDrones = nFathersPoisson))
-      DCAMelnI <- createDCA(age1$MelnI)
-      age0p2$MelnI <- cross(age0p2$MelnI, drones = pullDroneGroupsFromDCA(DCA = DCAMelnI, n = nColonies(age0p2$MelnI), nDrones = nFathersPoisson))
     } else {
       DCAMel <- createDCA(c(age1$Mel, age2$Mel))
       fathersMel <- pullDroneGroupsFromDCA(DCA = DCAMel, n = nColonies(age0p2$Mel), nDrones = nFathersPoisson)
@@ -1222,24 +1045,18 @@ if (burninOrScenario == "scenario") {
       DCACar <- createDCA(c(age1$Car, age2$Car))
       fathersCar <-  pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p2$Car), nDrones = nFathersPoisson)
       age0p2$Car <- cross(age0p2$Car, drones = fathersCar)
-      DCAMelnI <- createDCA(c(age1$MelnI, age2$MelnI))
-      fathersMelnI <-  pullDroneGroupsFromDCA(DCA = DCAMelnI, n = nColonies(age0p2$MelnI), nDrones = nFathersPoisson)
-      age0p2$MelnI <- cross(age0p2$MelnI, drones = fathersMelnI)
     }
     
     # Collapse
     age1 <- list(Mel = selectColonies(age1$Mel, p = 1 - p2collapse),
-                 MelnI = selectColonies(age1$MelnI, p = 1 - p2collapse),
                  Car = selectColonies(age1$Car, p = 1 - p2collapse))
     if (year > 1) {
       age2 <- list(Mel = selectColonies(age2$Mel, p = 1 - p2collapse),
-                   MelnI = selectColonies(age2$MelnI, p = 1 - p2collapse),
                    Car = selectColonies(age2$Car, p = 1 - p2collapse))
     }
     
     # Merge all age 0 colonies (from both periods)
     age0 <- list(Mel = c(age0p1$Mel, age0p2$Mel),
-                 MelnI = c(age0p1$MelnI, age0p2$MelnI),
                  Car = c(age0p1$Car, age0p2$Car))
     
     
@@ -1263,16 +1080,6 @@ if (burninOrScenario == "scenario") {
     Nselectcolon1<-round(length(queensID1)*(1-p3collapseAge1)) #calculate how many colonies will collapse
     age1MelqueensID<-queensID1[1:Nselectcolon1] #select the queens ids that will not collapse
     
-    MelnIBritFit<-sapply(getPheno(age0$MelnI, caste = "queen"), function(x) x[1,3])#select on Mel Brit fitness
-    queensID2<-names(sort(MelnIBritFit,T))
-    Nselectcolon2<-round(length(queensID2)*(1-p3collapseAge0)) #calculate how many colonies will collapse
-    age0MelnIqueensID<-queensID2[1:Nselectcolon2] #select the queens ids that will not collapse
-    
-    MelnIBritFit1<-sapply(getPheno(age1$MelnI, caste = "queen"), function(x) x[1,3])#select on Mel Brit fitness
-    queensID3<-names(sort(MelnIBritFit1,T))
-    Nselectcolon3<-round(length(queensID3)*(1-p3collapseAge1)) #calculate how many colonies will collapse
-    age1MelnIqueensID<-queensID3[1:Nselectcolon3] #select the queens ids that will not collapse
-    
     CarEuFit<-sapply(getPheno(age0$Car, caste = "queen"), function(x) x[1,4])#select on Mel Brit fitness
     queensID<-names(sort(CarEuFit,T))
     Nselectcolon<-round(length(queensID)*(1-p3collapseAge0)) #calculate how many colonies will collapse
@@ -1287,11 +1094,9 @@ if (burninOrScenario == "scenario") {
     Carqueenpre<-nColonies(selectColonies(age0$Mel,ID= IdImportColonies))
     Carqueenpre1<-nColonies(selectColonies(age1$Mel,ID= IdImportColonies))
     age0 <- list(Mel = selectColonies(age0$Mel, ID = age0MelqueensID),
-                 MelnI = selectColonies(age0$MelnI, ID = age0MelnIqueensID),
                  Car = selectColonies(age0$Car, ID = age0CarqueensID))
     
     age1 <- list(Mel = selectColonies(age1$Mel, ID = age1MelqueensID),
-                 MelnI = selectColonies(age1$MelnI, ID = age1MelnIqueensID),
                  Car = selectColonies(age1$Car, ID= age1CarqueensID))
     
     age2 <- list(Mel = NULL, MelnI = NULL, Car = NULL) #We don't need this but just to show the workflow!!!
@@ -1307,11 +1112,10 @@ if (burninOrScenario == "scenario") {
     print(Sys.time())
     
     age0$Mel <- maintainIrelandSize(age0 = age0$Mel, age1 = age1$Mel)
-    age0$MelnI <- maintainIrelandSize(age0 = age0$MelnI, age1 = age1$MelnI)
     age0$Car <- maintainCarSize(age0 = age0$Car, age1 = age1$Car)
     
     
-    for (subspecies in c("Mel", "MelnI", "Car")) {     
+    for (subspecies in c("Mel", "Car")) {     
       if ((nColonies(age0[[subspecies]]) + nColonies(age1[[subspecies]])) == IrelandSize
           | (nColonies(age0[[subspecies]]) + nColonies(age1[[subspecies]])) == CarSize)
       {
@@ -1337,8 +1141,6 @@ if (burninOrScenario == "scenario") {
       colnames(MeanVarMel)<-columnheaders
       MeanVarCar <- data.frame(matrix(ncol = length(columnheaders), nrow = 0)) #dataframe for carnica
       colnames(MeanVarCar)<-columnheaders
-      MeanVarMelnI <- data.frame(matrix(ncol = length(columnheaders), nrow = 0)) #dataframe for carnica
-      colnames(MeanVarMelnI)<-columnheaders
     } 
     
     if (year==1){
@@ -1369,14 +1171,15 @@ if (burninOrScenario == "scenario") {
                          Homocigosity=mean(colonyRecords[(uno+1):dos,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(uno+1):dos,"pHomBrood"]),
                          sdIBD=sd(colonyRecords[(uno+1):dos,"IBD"]), survivingCar=sum(colonyRecords[(uno+1):unoymedio,"IBD"]==0))
     
-    #record values for Mellifera without imports population
-    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$MelnI, year = year, population = "MelnI", Rep=Rep)
-    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$MelnI, year = year, population = "MelnI", Rep=Rep)
-    tres<-nrow(colonyRecords)#this is to show where to end recording values on the dataframe
+
     
+    #record values of Carnica population
+    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$Car, year = year, population = "Car", Rep=Rep)
+    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$Car, year = year, population = "Car", Rep=Rep)
+    tres<-nrow(colonyRecords)
     
-    #create a dataframe with the mellifera mean IBD, variance of IBD, mean Honey yield, mean fitness and mean homocigosity
-    newrow2<- data.frame(MeanIBD=mean(colonyRecords[(dos+1):tres,"IBD"]), VarIBD=var(colonyRecords[(dos+1):tres,"IBD"]), Year=year,Rep=Rep,Population="MelnI",
+    #create a dataframe with the carnica mean IBD, variance of IBD, mean Honey yield, mean fitness and mean homocigosity
+    newrow2<- data.frame(MeanIBD=mean(colonyRecords[(dos+1):tres,"IBD"]), VarIBD=var(colonyRecords[(dos+1):tres,"IBD"]), Year=year,Rep=Rep,Population="Car",
                          HoneyYieldBrit=mean(colonyRecords[(dos+1):tres,"gvQueens_BritHY"]), sdHoneyYieldBrit=sd(colonyRecords[(dos+1):tres,"gvQueens_BritHY"]),
                          FitnessBrit=mean(colonyRecords[(dos+1):tres,"gvQueens_BritFit"]),sdFitnessBrit=sd(colonyRecords[(dos+1):tres,"gvQueens_BritFit"]),
                          HoneyYieldEu=mean(colonyRecords[(dos+1):tres,"gvQueens_EuHY"]), sdHoneyYieldEu=sd(colonyRecords[(dos+1):tres,"gvQueens_EuHY"]),
@@ -1388,28 +1191,9 @@ if (burninOrScenario == "scenario") {
                          Homocigosity=mean(colonyRecords[(dos+1):tres,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(dos+1):tres,"pHomBrood"]),
                          sdIBD=sd(colonyRecords[(dos+1):tres,"IBD"]), survivingCar=sd(colonyRecords[(dos+1):tres,"IBD"]))
     
-    #record values of Carnica population
-    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age0$Car, year = year, population = "Car", Rep=Rep)
-    colonyRecords <- data_rec(datafile = colonyRecords, colonies = age1$Car, year = year, population = "Car", Rep=Rep)
-    cua<-nrow(colonyRecords)
-    
-    #create a dataframe with the carnica mean IBD, variance of IBD, mean Honey yield, mean fitness and mean homocigosity
-    newrow3<- data.frame(MeanIBD=mean(colonyRecords[(tres+1):cua,"IBD"]), VarIBD=var(colonyRecords[(tres+1):cua,"IBD"]), Year=year,Rep=Rep,Population="Car",
-                         HoneyYieldBrit=mean(colonyRecords[(tres+1):cua,"gvQueens_BritHY"]), sdHoneyYieldBrit=sd(colonyRecords[(tres+1):cua,"gvQueens_BritHY"]),
-                         FitnessBrit=mean(colonyRecords[(tres+1):cua,"gvQueens_BritFit"]),sdFitnessBrit=sd(colonyRecords[(tres+1):cua,"gvQueens_BritFit"]),
-                         HoneyYieldEu=mean(colonyRecords[(tres+1):cua,"gvQueens_EuHY"]), sdHoneyYieldEu=sd(colonyRecords[(tres+1):cua,"gvQueens_EuHY"]),
-                         FitnessEu=mean(colonyRecords[(tres+1):cua,"gvQueens_EuFit"]), sdFitnessEu=sd(colonyRecords[(tres+1):cua,"gvQueens_EuFit"]),
-                         pheHoneyYieldBrit=mean(colonyRecords[(tres+1):cua,"pheQueens_BritHY"]), sdpheHoneyYieldBrit=sd(colonyRecords[(tres+1):cua,"pheQueens_BritHY"]),
-                         pheFitnessBrit=mean(colonyRecords[(tres+1):cua,"pheQueens_BritFit"]),sdpheFitnessBrit=sd(colonyRecords[(tres+1):cua,"pheQueens_BritFit"]),
-                         pheHoneyYieldEu=mean(colonyRecords[(tres+1):cua,"pheQueens_EuHY"]), sdpheHoneyYieldEu=sd(colonyRecords[(tres+1):cua,"pheQueens_EuHY"]),
-                         pheFitnessEu=mean(colonyRecords[(tres+1):cua,"pheQueens_EuFit"]), sdpheFitnessEu=sd(colonyRecords[(tres+1):cua,"pheQueens_EuFit"]),
-                         Homocigosity=mean(colonyRecords[(tres+1):cua,"pHomBrood"]),sdHomocigosity=sd(colonyRecords[(tres+1):cua,"pHomBrood"]),
-                         sdIBD=sd(colonyRecords[(tres+1):cua,"IBD"]), survivingCar=sd(colonyRecords[(tres+1):cua,"IBD"]))
-    
     #Combine what we had in each dataframe with the new info, so each year the dataframe updates with new values
     MeanVarMel<-rbind(MeanVarMel,newrow1)
-    MeanVarMelnI<-rbind(MeanVarMelnI,newrow2)
-    MeanVarCar<-rbind(MeanVarCar,newrow3)
+    MeanVarCar<-rbind(MeanVarCar,newrow2)
   } #end of year loop
   
   CombinedDf<-rbind(MeanVarCar,MeanVarMel,MeanVarMelnI)

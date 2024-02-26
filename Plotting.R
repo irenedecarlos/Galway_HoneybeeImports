@@ -145,7 +145,19 @@ ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Beekeepe
 
 
 
-
+# getting the number of carnica queens that collapse each winter
+resultsdf <- read.csv("results20.csv")
+nuevamelf <- resultsdf %>%
+  group_by(Year, Population) %>%
+  reframe(survivingCar = mean(survivingCar))
+melf <- nuevamelf %>%
+  filter(Population %in% "Mel")
+ggplot(melf, aes(x = as.factor(Year), y = survivingCar)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Year", y = "Number of Surviving Queens", fill = "Replica") +
+  ggtitle("Number of Surviving Queens Over the Years") +
+  theme_minimal()
+melf
 
 #If we have them in just one file
 #para tenerlos todos en una lista hay que cambiar la forma de guardarlo en simulation.R para que los csv se guarden
