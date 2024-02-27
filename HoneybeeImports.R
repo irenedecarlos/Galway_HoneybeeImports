@@ -137,8 +137,8 @@ if (burninOrScenario == "burnin") {
   p2collapse <- p1collapse     # Percentage of colonies that collapse in period 2
   
   # Period3 (winter)
-  p3collapseAge0 <- 0.25      # Percentage of age 0 colonies that collapse in period 3
-  p3collapseAge1 <- 0.3       # Percentage of age 2 colonies that collapse in period 3
+  p3collapseAge0 <- 0.16      # Percentage of age 0 colonies that collapse in period 3 collapse probs in ireland
+  p3collapseAge1 <- 0.18       # Percentage of age 2 colonies that collapse in period 3
   
   #Import parameters -------------------------------------------------------------------
   pImport <- param1Value              # Percentage import from carnica to mellifera
@@ -149,7 +149,7 @@ if (burninOrScenario == "burnin") {
   # Prepare recording function
   data_rec <- function(datafile, colonies, year, population, Rep) {
     queens = mergePops(getQueen(colonies))
-    IBDh = apply(getIbdHaplo(queens), MARGIN = 1, FUN =  function(X) sum(X %in% 1:((nMelN+nMelnI)*2)/length(X))) #se usa nMelN y nMelnI porque son los haplotipos fundadores
+    IBDh = apply(getIbdHaplo(queens), MARGIN = 1, FUN =  function(X) sum(X %in% 1:((nMelN)*2)/length(X))) #se usa nMelN y nMelnI porque son los haplotipos fundadores
     datafile = rbind(datafile,
                      data.frame(colonies             = deparse(substitute(colonies)),
                                 population           = population,
@@ -1099,7 +1099,7 @@ if (burninOrScenario == "scenario") {
     age1 <- list(Mel = selectColonies(age1$Mel, ID = age1MelqueensID),
                  Car = selectColonies(age1$Car, ID= age1CarqueensID))
     
-    age2 <- list(Mel = NULL, MelnI = NULL, Car = NULL) #We don't need this but just to show the workflow!!!
+    age2 <- list(Mel = NULL, Car = NULL) #We don't need this but just to show the workflow!!!
     Carqueenpost<-nColonies(selectColonies(age0$Mel,ID= IdImportColonies))
     Carqueenpost1<-nColonies(selectColonies(age1$Mel,ID= IdImportColonies))
     deadqueens<-(Carqueenpre-Carqueenpost)+(Carqueenpre1-Carqueenpost1)
@@ -1196,7 +1196,7 @@ if (burninOrScenario == "scenario") {
     MeanVarCar<-rbind(MeanVarCar,newrow2)
   } #end of year loop
   
-  CombinedDf<-rbind(MeanVarCar,MeanVarMel,MeanVarMelnI)
+  CombinedDf<-rbind(MeanVarCar,MeanVarMel)
   save.image(paste0("Selection",Rep,"_import",param1Value,".RData"))
   
   sink(file = paste0("Selection",Rep,"_import",param1Value,".RData")) # saving data from the burnin
@@ -1207,7 +1207,6 @@ if (burninOrScenario == "scenario") {
   cat(write.csv(CombinedDf, paste0("scenarioData_rep",Rep,"_import",param1Value,".csv")))
   sink()
   remove(MeanVarCar)
-  remove(MeanVarMelnI) 
   remove(MeanVarMel)
   setwd("..") # scenario folder
   setwd("..") # rep folder
