@@ -20,7 +20,7 @@ library(dplyr)
 library(ggpubr)
 #If we have them on separate files
 getwd()
-setwd("C:/Users/Irene/Desktop/Galway/Results/test160224")
+setwd("C:/Users/Irene/Desktop/Galway/Results/test260224")
 resultsdf<- read.csv("results.csv")
 resultsdf2<- read.csv("results20.csv")
 nuevamel<- resultsdf %>% group_by(Year,Population)%>% summarise(meanIBD = mean(MeanIBD),
