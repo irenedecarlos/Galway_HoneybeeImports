@@ -220,7 +220,6 @@ if (year == 1) {
   age1$Mel <-  setLocation(age1$Mel, 
                              location = Map(c, runif(nColonies(age1$Mel), 0, 2*pi), runif(nColonies(age1$Mel), 0, 2*pi)))
  
-  
   locationsDF <- data.frame(Location = getLocation(c(age1$Mel), collapse = TRUE),
                             Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel))))
   ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
@@ -287,6 +286,7 @@ virginDonor <- list(Mel = sample.int(n = nColonies(age1$Mel), size = 1),
                     Car = sample.int(n = nColonies(age1$Car), size = 1))
 # Virgin queens for splits!
 pImport<-0.3
+#estoy importando más colonias al este y menos al oeste. Lo de saply coge el numero pimport*0.10 colonias del oeste (de la cordenada x=cero hasta la dos (si queremos Y coordenanda --> coords[2])) luego se cogen las del medio (de x2 a x4) y luego este (60%)
 ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= 2 )],nColonies(age0p1$Mel)*pImport*0.10)
 thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= 2 & coords[1] <= 4)],nColonies(age0p1$Mel)*pImport*0.30)
 ses <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] > 4)],nColonies(age0p1$Mel)*pImport*0.60)
