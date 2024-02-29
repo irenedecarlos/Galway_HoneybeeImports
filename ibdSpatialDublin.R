@@ -600,7 +600,7 @@ loopTime <- rbind(loopTime, c(Rep, a$tic, a$toc, a$msg, (a$toc - a$tic)))
 } # Rep-loop
 
 
-#I would try with raster plots for what i want to show although the heat map is acting like a raster, try both options.
+#I would try with raster plots for what I want to show although the heat map is acting like a raster, try both options.
 
 
 # Load necessary library
