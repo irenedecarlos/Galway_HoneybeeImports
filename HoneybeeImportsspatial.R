@@ -337,7 +337,8 @@ if (burninOrScenario == "burnin") {
       age2 <- list(Mel = tmp$Mel$remnant,
                    MelnI = tmp$MelnI$remnant,
                    Car = tmp$Car$remnant
-      ) 
+      )
+      
       #Set the location of splits to a location near where the original colony is
       x <- sapply(getLocation(age2$Mel), function(X) X[1])
       y <- sapply(getLocation(age2$Mel), function(X) X[2])
@@ -953,7 +954,7 @@ if (burninOrScenario == "scenario") {
     #requeen with carnica and mellifera for Mel and carnica for Car
     
     pImport<-param1Value
-    ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= 2 )],nColonies(age0p1$Mel)*pImport*0.10)
+    five <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= 2 )],nColonies(age0p1$Mel)*pImport*0.10)
     thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= 2 & coords[1] <= 4)],nColonies(age0p1$Mel)*pImport*0.30)
     ses <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] > 4)],nColonies(age0p1$Mel)*pImport*0.60)
     idstopull<-c(ten,thirty,ses)
