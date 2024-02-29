@@ -20,9 +20,9 @@ library(dplyr)
 library(ggpubr)
 #If we have them on separate files
 getwd()
-setwd("C:/Users/Irene/Desktop/Galway/Results/test260224")
+setwd("C:/Users/Irene/Desktop/Galway/Results/test270224/importation")
 resultsdf<- read.csv("results.csv")
-resultsdf2<- read.csv("results20.csv")
+resultsdf2<- read.csv("results4.csv")
 nuevamel<- resultsdf %>% group_by(Year,Population)%>% summarise(meanIBD = mean(MeanIBD),
                                                               quanIBDl= quantile(MeanIBD,p=0.025),
                                                               quanIBDh= quantile(MeanIBD,p=0.975))
@@ -52,7 +52,7 @@ ggplot(nuevamel, aes(x = Year, y = meanIBD, color = Population),linewidth=1.15) 
 #Para plotear la miel (aplicable a fitness)
 
 resultsdf <- read.csv("results.csv")
-resultsdf2 <- read.csv("results20.csv")
+resultsdf2 <- read.csv("results4.csv")
 
 # Calculate summary statistics for honey yield
 nuevamel <- resultsdf %>%
@@ -95,7 +95,7 @@ ggplot(nuevamel, aes(x = Year, y = honey_yield, color = Population)) +
 ################################################################################################################################################
 #Fitness
 resultsdf1 <- read.csv("results.csv")
-resultsdf20 <- read.csv("results20.csv")
+resultsdf20 <- read.csv("results4.csv")
 
 # Calculate summary statistics for fitness
 nuevamelf <- resultsdf1 %>%
@@ -157,7 +157,7 @@ ggplot(melf, aes(x = as.factor(Year), y = survivingCar)) +
   labs(x = "Year", y = "Number of Surviving Queens", fill = "Replica") +
   ggtitle("Number of Surviving Queens Over the Years") +
   theme_minimal()
-melf
+melf[11:30,]
 
 #If we have them in just one file
 #para tenerlos todos en una lista hay que cambiar la forma de guardarlo en simulation.R para que los csv se guarden
@@ -181,3 +181,41 @@ ggplot(plot_data, aes(x = Year, y = Weight, color = Population, linetype = Scena
   labs(title = "Weight per Year per Population per Scenario",
        x = "Year", y = "Weight") +
   theme_minimal()        
+##########################################################################################################################################################
+#plots for the correlation
+getwd()
+setwd("C:/Users/Irene/Desktop/Galway/Results/test270224/correlation")
+resultsdf<- read.csv("results0.25.csv")
+resultsdf2<- read.csv("results0.7.csv")
+resultsdf3<- read.csv("results-0.7.csv")
+nuevamel<- resultsdf %>% group_by(Year,Population)%>% summarise(meanIBD = mean(MeanIBD),
+                                                                quanIBDl= quantile(MeanIBD,p=0.025),
+                                                                quanIBDh= quantile(MeanIBD,p=0.975))
+Combined<-resultsdf2 %>% group_by(Year,Population)%>% summarise(meanIBD = mean(MeanIBD),
+                                                                quanIBDl= quantile(MeanIBD,p=0.025),
+                                                                quanIBDh= quantile(MeanIBD,p=0.975))
+cal<-resultsdf3 %>% group_by(Year,Population)%>% summarise(meanIBD = mean(MeanIBD),
+                                                                quanIBDl= quantile(MeanIBD,p=0.025),
+                                                                quanIBDh= quantile(MeanIBD,p=0.975))
+melc <- cal %>%
+  filter(Population == "Mel")
+mel <- Combined %>%
+  filter(Population == "Mel")
+pel <- nuevamel %>%
+  filter(Population == "Mel")
+ggplot(nuevamel, aes(x = Year, y = meanIBD, color = Population),linewidth=1.15) +
+  geom_line(linewidth=1.15) +
+  geom_ribbon(aes(ymin = quanIBDl, 
+                  ymax = quanIBDh, 
+                  fill = Population), alpha=0.05, color = NA) +
+  geom_line(data = mel, aes(x = Year, y = meanIBD, color = "Mel 20"), linewidth=1.15) +
+  geom_ribbon(data = mel, aes(x = Year, ymin = quanIBDl, ymax = quanIBDh, fill = "Mel 20"), alpha = 0.05, color = NA) +
+  geom_line(data = melc, aes(x = Year, y = meanIBD, color = "Mel 20"), linewidth=1.15) +
+  geom_ribbon(data = melc, aes(x = Year, ymin = quanIBDl, ymax = quanIBDh, fill = "Mel 20"), alpha = 0.05, color = NA) +
+  labs(title = "Introgression over time",
+       x = "Years",
+       y = "pMelHaplo") +
+  theme_bw() + 
+  theme(panel.grid = element_blank(),
+        plot.title = element_text(hjust = 0.5))+
+  scale_color_manual(values=c(  "black","#FC4E07", "#286ceb","purple"))
