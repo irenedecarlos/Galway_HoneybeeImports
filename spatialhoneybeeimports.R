@@ -1207,6 +1207,12 @@ if (burninOrScenario == "scenario") {
     #Combine what we had in each dataframe with the new info, so each year the dataframe updates with new values
     MeanVarMel<-rbind(MeanVarMel,newrow1)
     MeanVarCar<-rbind(MeanVarCar,newrow2)
+    
+    ceroqueen = mergePops(getQueen(age0$Mel))
+    ibddos<-apply(getIbdHaplo(ceroqueen),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+    ibd<-sapply(seq(1,length(ibddos),2), FUN = function(z) sum(ibddos[z:(z+1)])/2)
+    print(ibd)
+    
   } #end of year loop
   
   CombinedDf<-rbind(MeanVarCar,MeanVarMel)
