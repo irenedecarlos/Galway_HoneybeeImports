@@ -282,23 +282,10 @@ age0p1$Mel<-setLocation(age0p1$Mel, location = Map(c, (x+runif(length(x), min = 
 
 print("Create virgin queens, period 1")
 print(Sys.time())
-#new
-if (year == 1){
-virginQueens <- list(Mel = createVirginQueens(age1$Mel, collapse=T, nInd=1),
-                    Car = createVirginQueens(age1$Car, collapse=T, nInd=10))
-} else {
-virginQueens <- list(Mel = c(createVirginQueens(age1$Mel, collapse=T, nInd=1), createVirginQueens(age2$Mel, collapse=T, nInd=1)),
-                     Car = createVirginQueens(age1$Car, collapse=T, nInd=10))
-}
-virginQueens<-list(Mel = mergePops(virginQueens$Mel),
-                   Car = mergePops(virginQueens$Car))
-
-#end
 
 
-#old
 #virginDonor <- list(Mel = sample.int(n = nColonies(age1$Mel), size = 1),
- #                   Car = sample.int(n = nColonies(age1$Car), size = 1))
+#                    Car = sample.int(n = nColonies(age1$Car), size = 1))
 
 # Virgin queens for splits!
 pImport<-0.3
@@ -306,33 +293,68 @@ pImport<-0.3
 ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= 2 )],nColonies(age0p1$Mel)*pImport*0.10)
 thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= 2 & coords[1] <= 4)],nColonies(age0p1$Mel)*pImport*0.30)
 ses <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] > 4)],nColonies(age0p1$Mel)*pImport*0.60)
-idofallp0<-getId(age0p1$Mel)  #new
 idstopull<-c(ten,thirty,ses)
-posiciones <- match(idstopull, idofallp0)    #new
-virginQueens<-list(Mel = virginQueens$Mel[-posiciones],   #new
-                   Car = virginQueens$Car)
 tmp <- (Mel = pullColonies(age0p1$Mel,ID=idstopull))
 IdImportColonies<-getId(tmp$pulled)
 age0p1 <- list(Mel = tmp$remnant,
                MelImport = tmp$pulled,
                Car = c(age0p1$Car, tmp$Car$split))
 
+# Number of squares along each axis
+num_squares_per_side <- 4
+total_squares <- num_squares_per_side^2
 
-#old
-#virginQueens <- list(Mel = createVirginQueens(age1$Mel[[virginDonor$Mel]], nInd = nColonies(age0p1$Mel)),
-                    # Car = createVirginQueens(age1$Car[[virginDonor$Car]], nInd = nColonies(age0p1$Car)+nColonies(age0p1$MelImport)))
-#new
-carqueens<-nColonies(age0p1$Car)+nColonies(age0p1$MelImport)
+# Initialize a list to store sampled colonies
+sampled_colonies <- list()
 
-virginQueens<-list(Mel = virginQueens$Mel,
-                   Car = virginQueens$Car[sample(1:nInd(virginQueens$Car), size = carqueens, replace = FALSE)])
-#end
+# Loop through each smaller square
+for (i in 1:num_squares_per_side) {
+  for (j in 1:num_squares_per_side) {
+    # Define boundaries of the current square
+    x_min <- (i - 1) * 6 / num_squares_per_side
+    x_max <- i * 6 / num_squares_per_side
+    y_min <- (j - 1) * 6 / num_squares_per_side
+    y_max <- j * 6 / num_squares_per_side
+    
+    
+    
+    # Find colonies within the current square
+    colonies_in_square <- which(x >= x_min & x <= x_max & y >= y_min & y <= y_max)
+    
+    # Sample one colony if there are colonies in the square
+    if (length(colonies_in_square) > 0) {
+      sampled_colony <- sample(colonies_in_square, 1)
+      # Store the sampled colony in the list
+      idcols<-sapply(colonies_in_square, function(x) x[1])
+      virgsamp<-sapply(sampled_colony, function(x) x[1])
+      VQ<-createVirginQueens(age1$Mel[virgsamp], nInd = 50)
+      nindvsqu<-length(idcols)
+      #claro las age0p1 no tienen los mismos ids que las age1, por tanto no funsiona, habria k tb calcular que age0 colonies caen en el cuadrado. osea idecols es de age1 no de age0p1
+      req<-reQueen(age0p1$Mel[idcols], queen = VQ[1:nindvsqu])
+      age0p1mel<-c(age0p1mel,req) #esto me va a dar error
+      sampled_colonies[[paste("Square", (i-1)*num_squares_per_side + j, sep = "_")]] <- sampled_colony
+    }
+  }
+}
+
+#entonces despues de solucionar lo de el #claro,  ya habria requeeneado todas las mel no importadas con vq de su zona
+#y lo que tendria que gacer ahora sería requenear carnica y mel import y juntar melim y las mel en mel y car en car en age0p1
+
+
+
+# Show the sampled colonies in each square
+idcol<-unname(sapply(sampled_colonies, function(x) x[1]))
+
+virginQueens <- list(Mel = createVirginQueens(age1$Mel[idcol], nInd = 50),
+                     Car = createVirginQueens(age1$Car[[virginDonor$Car]], nInd = nColonies(age0p1$Car)+nColonies(age0p1$MelImport)))
+
+
 # Requeen the splits --> queens are now 0 years old
 
 nColoniesMelImport<-nColonies(age0p1$MelImport)
 nColoniesCar<-nColonies(age0p1$Car)+nColonies(age0p1$MelImport)
 
-age0p1 <- list(Mel = c(reQueen(age0p1$Mel, queen = (virginQueens$Mel)) ,
+age0p1 <- list(Mel = c(reQueen(age0p1$Mel, queen = (virginQueens$Mel)), #esta de aqui la metes en el loop y luego list(Mel=c(age0p1me, requeenmelimp)
                        reQueen(age0p1$MelImport, queen = c((virginQueens$Car)[1:nColoniesMelImport]))), 
                Car = reQueen(age0p1$Car, queen = virginQueens$Car[(nColoniesMelImport+1):nColoniesCar]))
 
@@ -657,3 +679,36 @@ IBD
 # I think it is okey if we put 1:(nMelN)*2 because all queens of mellifera will 
 #have an haplotype from 1 to twice the founder genomes o Mel (nMelN*2)
 colonyRecords[800:900,]
+
+
+
+
+# Number of squares along each axis
+num_squares_per_side <- 4
+total_squares <- num_squares_per_side^2
+
+# Initialize a list to store sampled colonies
+sampled_colonies <- list()
+
+# Loop through each smaller square
+for (i in 1:num_squares_per_side) {
+  for (j in 1:num_squares_per_side) {
+    # Define boundaries of the current square
+    x_min <- (i - 1) * 6 / num_squares_per_side
+    x_max <- i * 6 / num_squares_per_side
+    y_min <- (j - 1) * 6 / num_squares_per_side
+    y_max <- j * 6 / num_squares_per_side
+    
+    
+    
+    # Find colonies within the current square
+    colonies_in_square <- which(x >= x_min & x <= x_max & y >= y_min & y <= y_max)
+    
+    # Sample one colony if there are colonies in the square
+    if (length(colonies_in_square) > 0) {
+      sampled_colony <- sample(colonies_in_square, 1)
+      # Store the sampled colony in the list
+      sampled_colonies[[paste("Square", (i-1)*num_squares_per_side + j, sep = "_")]] <- sampled_colony
+    }
+  }
+}

@@ -20,9 +20,9 @@ library(dplyr)
 library(ggpubr)
 #If we have them on separate files
 getwd()
-setwd("C:/Users/Irene/Desktop/Galway/Results/test290224")
+setwd("C:/Users/Irene/Desktop/Galway/Results/test290224/stopimports")
 resultsdf<- read.csv("results.csv")
-resultsdf2<- read.csv("results20.csv")
+resultsdf2<- read.csv("results4.csv")
 nuevamel<- resultsdf %>% group_by(Year,Population)%>% summarise(meanIBD = mean(MeanIBD),
                                                               quanIBDl= quantile(MeanIBD,p=0.025),
                                                               quanIBDh= quantile(MeanIBD,p=0.975))
