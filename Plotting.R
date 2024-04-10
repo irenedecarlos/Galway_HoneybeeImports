@@ -20,9 +20,9 @@ library(dplyr)
 library(ggpubr)
 #If we have them on separate files
 getwd()
-setwd("C:/Users/Irene/Desktop/Galway/Results/test290224/stopimports")
+setwd("C:/Users/Irene/Desktop/Galway/Results/test040324")
 resultsdf<- read.csv("results.csv")
-resultsdf2<- read.csv("results4.csv")
+resultsdf2<- read.csv("results20.csv")
 nuevamel<- resultsdf %>% group_by(Year,Population)%>% summarise(meanIBD = mean(MeanIBD),
                                                               quanIBDl= quantile(MeanIBD,p=0.025),
                                                               quanIBDh= quantile(MeanIBD,p=0.975))
@@ -52,7 +52,7 @@ ggplot(nuevamel, aes(x = Year, y = meanIBD, color = Population),linewidth=1.15) 
 #Para plotear la miel (aplicable a fitness)
 
 resultsdf <- read.csv("results.csv")
-resultsdf2 <- read.csv("results4.csv")
+resultsdf2 <- read.csv("results20.csv")
 
 # Calculate summary statistics for honey yield
 nuevamel <- resultsdf %>%
@@ -95,7 +95,7 @@ ggplot(nuevamel, aes(x = Year, y = honey_yield, color = Population)) +
 ################################################################################################################################################
 #Fitness
 resultsdf1 <- read.csv("results.csv")
-resultsdf20 <- read.csv("results4.csv")
+resultsdf20 <- read.csv("results20.csv")
 
 # Calculate summary statistics for fitness
 nuevamelf <- resultsdf1 %>%
@@ -137,8 +137,8 @@ ggplot(nuevamelf, aes(x = Year, y = fitness, color = Population)) +
 ############################################################################################################################
 # plotting for spatial
 
-locationsDF <- data.frame(Location = getLocation(c(age1$Mel), collapse = TRUE),
-                          Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel))))
+locationsDF <- data.frame(Location = getLocation(c(age0$Mel), collapse = TRUE),
+                          Beekeeper = c(rep("Beekeeper1", nColonies(age0$Mel))))
 ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
   geom_point()
 
@@ -157,7 +157,7 @@ ggplot(melf, aes(x = as.factor(Year), y = survivingCar)) +
   labs(x = "Year", y = "Number of Surviving Queens", fill = "Replica") +
   ggtitle("Number of Surviving Queens Over the Years") +
   theme_minimal()
-melf[11:30,]
+melf
 
 #If we have them in just one file
 #para tenerlos todos en una lista hay que cambiar la forma de guardarlo en simulation.R para que los csv se guarden

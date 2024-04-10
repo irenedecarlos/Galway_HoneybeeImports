@@ -24,12 +24,17 @@ maintainIrelandSize <- function(age0 = NULL, age1 = NULL) {
       nSplitNeeded <- age0needed - nColonies(age0swarm) # calculate the number of splits needed
       if (nSplitNeeded>nColonies(age0splitImport)){ #check if the number of importedsplits needed is greater than the number of importedsplits we have
         age0<- c(age0swarm,age0splitImport) #add all the imported splits to age 0 object
-        nSplitMelNeeded <- age0needed - nColonies(age0) # calculate the number of not imported splits needed
+        nSplitMelNeeded <- age0needed - nColonies(age0) # calculate the number of not imported splits needed 
+        #tendría que ser por aquí. Aqí tengo que seleccionar para quedarse los splits de apiarios con pocas colonias y vender los splits de apiarios con más colonias
+        #no tiene que ser muy dificil. Usamos las localizaciones y vemos cuales están menos repetidas, de esas cogemos los Ids y los añadimos a age0 
+        #y si quedan todavia splits por añadir, ya lo hacemos de los Ids restantes.
+        loc<-getLocation(age0)
+        
         splitMelId <- sample(getId(age0splitMel), nSplitMelNeeded) # select ids of not imported split 
         splitMelTmp <- pullColonies(age0splitMel, ID = splitMelId) # pull the splits
         splitsMel<- splitMelTmp$pulled # select pulled splits
         age0<-c(age0,splitsMel) #add them to age0 object
-      } else {  #if the imported splits needed are lower than the imported splits we have
+      } else {  #if the splits needed are lower than the imported splits we have
         splitImportId <- sample(getId(age0splitImport), nSplitNeeded) # select ids of split import
         ImportTmp <- pullColonies(age0splitImport, ID = splitImportId) # pull the split import
         splitImports<- ImportTmp$pulled # select pulled split import
@@ -61,6 +66,28 @@ maintainCarSize <- function(age0 = NULL, age1 = NULL) {
     return(age0)
   }
 }
+
+
+#positions of the numbers that are only repeated once
+Age0Location <- table(getLocation(age0))
+Onlyonce <- names(counts[Age0Location == 1])
+
+# Get the positions of these numbers in the original vector
+positions <- which(my_vector %in% single_occurrences)
+
+# Output the positions
+print(positions)
+
+#positions of the numbers that are only repeated three times or less
+
+my_vector <- c(1, 2, 3, 4, 5, 2, 3, 6, 7, 8, 9, 9, 10)
+counts <- table(my_vector)
+numbers_3_or_less <- names(counts[counts <= 3])
+positions <- which(my_vector %in% numbers_3_or_less)
+print(positions)
+
+
+
 
 
 # Load packages
@@ -111,7 +138,7 @@ p3collapseAge1 <- 0.3       # Percentage of age 2 colonies that collapse in peri
 
 #Import parameters -------------------------------------------------------------------
 pImport <- 0.3              # Percentage import from carnica to mellifera
-
+mapsize<- 90                  # Size of the map
 # Create data frames for recording the number of age0 and age1 colonies, csd variability and for recording cpu time
 loopTime <- data.frame(Rep = NA, tic = NA, toc = NA, msg = NA, time = NA)
 
@@ -201,7 +228,7 @@ fathersCar <- pullDroneGroupsFromDCA(drones$Car, n = nInd(virginQueens$Car[1:Car
 queens <- list(Mel = SIMplyBee::cross(x = virginQueens$Mel[1:IrelandSize], drones = fathersMel),
                Car = SIMplyBee::cross(x = virginQueens$Car[1:CarSize], drones = fathersCar))
 
-year=1
+year=2
 
 # Start the year-loop ------------------------------------------------------------------
 #for (year in 1:nYear) {
@@ -215,15 +242,50 @@ if (year == 1) {
   print("Creating initial colonies")
   age1 <- list(Mel = createMultiColony(x = queens$Mel, n = IrelandSize),
                Car = createMultiColony(x = queens$Car, n = CarSize))
-  #aqui empezamos a hacer lo de spatial
+  
+  #Este codigo coge grupos de colonias entre 2-7 y le asigna una localizacon random a los grupos de colonias.
+  idmel<-getId(age1$Mel)
+  apiary <- list()
+  min_colonies <- 4
+  max_colonies <- 10
+  while (length(idmel) > 0) {
+    apiary_size <- sample(min_colonies:max_colonies, 1)
 
-  age1$Mel <-  setLocation(age1$Mel, 
-                             location = Map(c, runif(nColonies(age1$Mel), 0, 2*pi), runif(nColonies(age1$Mel), 0, 2*pi)))
- 
+    if (apiary_size > length(idmel)) {
+      apiary_size <- length(idmel)
+    }
+    apiary <- c(apiary, list(idmel[1:apiary_size]))
+    idmel <- idmel[-(1:apiary_size)]
+  }
+
+  a<- pullColonies(age1$Mel, n = length(apiary))
+  a<-a$pulled
+  a <-  setLocation(a, 
+                           location = Map(c, runif(nColonies(a), 0, mapsize), runif(nColonies(a), 0, mapsize)))
+  
+  k <- unname(sapply(getLocation(a), function(X) X[1]))
+  h <- unname(sapply(getLocation(a), function(X) X[2]))
+  
+  b <- c()
+  for (i in 1:length(apiary)) {
+    grupo <- apiary[[i]]
+    num_ids <- length(grupo)
+    b <- c(b, rep(k[i], num_ids))
+  }
+  d<-c()
+  for (i in 1:length(apiary)) {
+    grupo <- apiary[[i]]
+    num_ids <- length(grupo)
+    d <- c(d, rep(h[i], num_ids))
+  }
+  
+  age1$Mel<-setLocation(age1$Mel, location = Map(c, abs((b+runif(length(b), min = -0.01, max = 0.01))), abs((d+runif(length(d), min = -0.01, max = 0.01)))))
+  
   locationsDF <- data.frame(Location = getLocation(c(age1$Mel), collapse = TRUE),
                             Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel))))
   ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
     geom_point()
+  
   
   
   # If not, promote the age0 to age1, age1 to age2 and remove age2 colonies
@@ -260,7 +322,8 @@ age0p1 <- list(Mel = tmp$Mel$split, Car = tmp$Car$split)
 #Set the location of splits to a location near where the original colony is
 x <- sapply(getLocation(age1$Mel), function(X) X[1])
 y <- sapply(getLocation(age1$Mel), function(X) X[2])
-age0p1$Mel<-setLocation(age0p1$Mel, location = Map(c, (x+runif(length(x), min = -0.1, max = 0.1)), (y+runif(length(y), min = -0.1, max = 0.1))))
+
+age0p1$Mel<-setLocation(age0p1$Mel, location = Map(c, abs((x+runif(length(x), min = -0.01, max = 0.01))), abs((y+runif(length(y), min = -0.1, max = 0.1)))))
 
  if (year > 1) {
   # Split all age2 colonies
@@ -271,28 +334,36 @@ age0p1$Mel<-setLocation(age0p1$Mel, location = Map(c, (x+runif(length(x), min = 
                Car = tmp$Car$remnant)
 
   #Set the location of splits to a location near where the original colony is
-  x <- sapply(getLocation(age2$Mel), function(X) X[1])
-  y <- sapply(getLocation(age2$Mel), function(X) X[2])
-  tmp$Mel$split<-setLocation(tmp$Mel$split, location = Map(c, (x+runif(length(x), min = -0.1, max = 0.1)), (y+runif(length(y), min = -0.1, max = 0.1))))
+  a <- sapply(getLocation(age2$Mel), function(X) X[1])
+  b <- sapply(getLocation(age2$Mel), function(X) X[2])
+  tmp$Mel$split<-setLocation(tmp$Mel$split, location = Map(c, abs((a+runif(length(a), min = -0.1, max = 0.1))), abs((b+runif(length(b), min = -0.1, max = 0.1)))))
   # The queens of the splits are 0 years old
   age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$split),
                  Car = c(age0p1$Car, tmp$Car$split))
 }
 
 
+locationsDF <- data.frame(Location = getLocation(c(age1$Mel, age0p1$Mel), collapse = TRUE),
+                          Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel)),
+                                        rep("Beekeeper2", nColonies(age0p1$Mel))))
+ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Beekeeper)) + 
+  geom_point()
+
 print("Create virgin queens, period 1")
 print(Sys.time())
 
-
+#old
 #virginDonor <- list(Mel = sample.int(n = nColonies(age1$Mel), size = 1),
-#                    Car = sample.int(n = nColonies(age1$Car), size = 1))
+#                   Car = sample.int(n = nColonies(age1$Car), size = 1))
+#virginQueens <- list(Mel = createVirginQueens(age1$Car[[virginDonor$Mel]], nInd = nColonies(age0p1$Mel)),
+# Car = createVirginQueens(age1$Car[[virginDonor$Car]], nInd = nColonies(age0p1$Car)+nColonies(age0p1$MelImport)))
 
 # Virgin queens for splits!
 pImport<-0.3
 #estoy importando más colonias al este y menos al oeste. Lo de saply coge el numero pimport*0.10 colonias del oeste (de la cordenada x=cero hasta la dos (si queremos Y coordenanda --> coords[2])) luego se cogen las del medio (de x2 a x4) y luego este (60%)
-ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= 2 )],nColonies(age0p1$Mel)*pImport*0.10)
-thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= 2 & coords[1] <= 4)],nColonies(age0p1$Mel)*pImport*0.30)
-ses <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] > 4)],nColonies(age0p1$Mel)*pImport*0.60)
+ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= (mapsize/3) )],nColonies(age0p1$Mel)*pImport*0.10)
+thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= (mapsize/3) & coords[1] <= (mapsize*(2/3)))],nColonies(age0p1$Mel)*pImport*0.30)
+ses <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] > (mapsize*(2/3)))],nColonies(age0p1$Mel)*pImport*0.60)
 idstopull<-c(ten,thirty,ses)
 tmp <- (Mel = pullColonies(age0p1$Mel,ID=idstopull))
 IdImportColonies<-getId(tmp$pulled)
@@ -301,52 +372,57 @@ age0p1 <- list(Mel = tmp$remnant,
                Car = c(age0p1$Car, tmp$Car$split))
 
 # Number of squares along each axis
-num_squares_per_side <- 4
+num_squares_per_side <- 3
 total_squares <- num_squares_per_side^2
 
 # Initialize a list to store sampled colonies
-sampled_colonies <- list()
+age0p1melz <- list()
 
 # Loop through each smaller square
 for (i in 1:num_squares_per_side) {
   for (j in 1:num_squares_per_side) {
     # Define boundaries of the current square
-    x_min <- (i - 1) * 6 / num_squares_per_side
-    x_max <- i * 6 / num_squares_per_side
-    y_min <- (j - 1) * 6 / num_squares_per_side
-    y_max <- j * 6 / num_squares_per_side
+    x_min <- (i - 1) * (mapsize+5) / num_squares_per_side
+    x_max <- i * (mapsize+5)/ num_squares_per_side
+    y_min <- (j - 1) * (mapsize+5) / num_squares_per_side
+    y_max <- j * (mapsize+5) / num_squares_per_side
     
-    
+    e<-sapply(getLocation(age0p1$Mel), function(X) X[1])
+    f<-sapply(getLocation(age0p1$Mel), function(X) X[2])
     
     # Find colonies within the current square
-    colonies_in_square <- which(x >= x_min & x <= x_max & y >= y_min & y <= y_max)
+    colonies_in_square1 <- which(x >= x_min & x <= x_max & y >= y_min & y <= y_max) #en el year 1 esto es para las colonias age1 pero en year 2 las ultimas x e y seran las de age2. cambiar los nombres por a y b en age2
+    colonies_in_square0 <- which(e >= x_min & e <= x_max & f >= y_min & f <= y_max)
+    #colonies in squ me esta dando la posicion en el vector pero no el id de la colonia getLocation(age0p1$Mel[1])
     
     # Sample one colony if there are colonies in the square
-    if (length(colonies_in_square) > 0) {
-      sampled_colony <- sample(colonies_in_square, 1)
-      # Store the sampled colony in the list
-      idcols<-sapply(colonies_in_square, function(x) x[1])
-      virgsamp<-sapply(sampled_colony, function(x) x[1])
-      VQ<-createVirginQueens(age1$Mel[virgsamp], nInd = 50)
-      nindvsqu<-length(idcols)
-      #claro las age0p1 no tienen los mismos ids que las age1, por tanto no funsiona, habria k tb calcular que age0 colonies caen en el cuadrado. osea idecols es de age1 no de age0p1
-      req<-reQueen(age0p1$Mel[idcols], queen = VQ[1:nindvsqu])
-      age0p1mel<-c(age0p1mel,req) #esto me va a dar error
-      sampled_colonies[[paste("Square", (i-1)*num_squares_per_side + j, sep = "_")]] <- sampled_colony
+    if (length(colonies_in_square1) & length(colonies_in_square0) > 0) {
+      idcols<-unname(sapply(colonies_in_square0, function(x) x[1]))
+      idcolss<-getId(age0p1$Mel)[idcols]
+      nindvsqu<-length(idcolss)
+      idsq1<-unname(sapply(colonies_in_square1, function(x) x[1]))
+      idsqr1<-getId(age1$Mel)[idsq1]
+      tmp<-list(Mel=pullColonies(age1$Mel,ID=idsqr1))
+      age1sq<-list(Mel=tmp$Mel$pulled)
+      virginDonor <- list(Mel = sample.int(n = nColonies(age1sq$Mel), size = 1))
+      VQ<-createVirginQueens(age1sq$Mel[[virginDonor$Mel]], nInd = nindvsqu) 
+      age0p1mel<-pullColonies(age0p1$Mel,ID=idcolss)
+      age0p1mel<-age0p1mel$pulled
+      req<-reQueen(age0p1mel, queen = VQ)
+      age0p1melz<- append(age0p1melz, list(req)) #este cabron no funciona
     }
   }
 }
 
-#entonces despues de solucionar lo de el #claro,  ya habria requeeneado todas las mel no importadas con vq de su zona
-#y lo que tendria que gacer ahora sería requenear carnica y mel import y juntar melim y las mel en mel y car en car en age0p1
+aww <- list(Mel = do.call(c, age0p1melz))
 
+#virginqueens for imports and car
 
+virginQueens <- list(Mel = createVirginQueens(age1$Mel, collapse=T, nInd=10),
+                     Car = createVirginQueens(age1$Car, collapse=T, nInd=10))
 
-# Show the sampled colonies in each square
-idcol<-unname(sapply(sampled_colonies, function(x) x[1]))
-
-virginQueens <- list(Mel = createVirginQueens(age1$Mel[idcol], nInd = 50),
-                     Car = createVirginQueens(age1$Car[[virginDonor$Car]], nInd = nColonies(age0p1$Car)+nColonies(age0p1$MelImport)))
+virginQueens<-list(Mel = mergePops(virginQueens$Mel),
+                   Car = mergePops(virginQueens$Car))
 
 
 # Requeen the splits --> queens are now 0 years old
@@ -354,7 +430,7 @@ virginQueens <- list(Mel = createVirginQueens(age1$Mel[idcol], nInd = 50),
 nColoniesMelImport<-nColonies(age0p1$MelImport)
 nColoniesCar<-nColonies(age0p1$Car)+nColonies(age0p1$MelImport)
 
-age0p1 <- list(Mel = c(reQueen(age0p1$Mel, queen = (virginQueens$Mel)), #esta de aqui la metes en el loop y luego list(Mel=c(age0p1me, requeenmelimp)
+age0p1 <- list(Mel = c(aww$Mel, 
                        reQueen(age0p1$MelImport, queen = c((virginQueens$Car)[1:nColoniesMelImport]))), 
                Car = reQueen(age0p1$Car, queen = virginQueens$Car[(nColoniesMelImport+1):nColoniesCar]))
 
@@ -367,8 +443,8 @@ tmp <- list(Mel = pullColonies(age1$Mel, p = p1swarm),
 age1 <- list(Mel = tmp$Mel$remnant,
              Car = tmp$Car$remnant)
 
-tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 0.3),
-            Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 0.3))
+tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 2),
+            Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 2))
 
 age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$remnant),
                Car = c(age0p1$Car, tmp$Car$remnant))
@@ -385,8 +461,8 @@ if (year > 1) {
   age2 <- list(Mel = tmp$Mel$remnant,     
                Car = tmp$Car$remnant)
   
-  tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 0.3),
-              Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 0.3))
+  tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 2),
+              Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 2))
   
   age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$remnant),
                  Car = c(age0p1$Car, tmp$Car$remnant))
@@ -431,12 +507,12 @@ if (year > 1) {
 print("Mate split colonies, P1")
 print(Sys.time())
 if (year == 1) {
-  age0p1$Mel <- cross(age0p1$Mel, droneColonies = age1$Mel, crossPlan= "create", spatial= T, radius= 2, nDrones= nDronesPoisson, checkCross = "warning")
+  age0p1$Mel <- cross(age0p1$Mel, droneColonies = age1$Mel, crossPlan= "create", spatial= T, radius= 10, nDrones= nDronesPoisson, checkCross = "warning")
   DCACar <- createDCA(age1$Car)
   age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
 
 } else {
-  age0p1$Mel <- cross(age0p1$Mel, droneColonies = c(age1$Mel,age2$Mel), crossPlan= "create", spatial= T, radius= 2, nDrones= nDronesPoisson, checkCross = "warning")
+  age0p1$Mel <- cross(age0p1$Mel, droneColonies = c(age1$Mel,age2$Mel), crossPlan= "create", spatial= T, radius= 10, nDrones= nDronesPoisson, checkCross = "warning")
   DCACar <- createDCA(c(age1$Car, age2$Car))
   age0p1$Car <- cross(age0p1$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p1$Car), nDrones = nFathersPoisson))
   
@@ -468,8 +544,8 @@ tmp <- list(Mel = pullColonies(age1$Mel, p = p2swarm),
 age1 <- list(Mel = tmp$Mel$remnant,
              Car = tmp$Car$remnant)
 
-tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 0.3),
-            Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 0.3))
+tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 2),
+            Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 2))
 
 # The queens of the remnant colonies are of age 0
 age0p2 <- list(Mel = tmp$Mel$remnant,
@@ -488,8 +564,8 @@ if (year > 1) {
   age2 <- list(Mel = tmp$Mel$remnant,
                Car = tmp$Car$remnant)
   
-  tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 0.3),
-              Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 0.3))
+  tmp <- list(Mel = swarm(tmp$Mel$pulled, sampleLocation = T, radius = 2),
+              Car = swarm(tmp$Car$pulled, sampleLocation = T, radius = 2))
   
   # The queens of the remnant colonies are of age 0
   age0p2 <- list(Mel = tmp$Mel$remnant,
@@ -555,12 +631,12 @@ print(Sys.time())
 
 
 if (year == 1) {
-  age0p2$Mel <- cross(age0p2$Mel, droneColonies = age1$Mel, crossPlan= "create", spatial= T, radius= 5, nDrones= nDronesPoisson, checkCross = "warning")
+  age0p2$Mel <- cross(age0p2$Mel, droneColonies = age1$Mel, crossPlan= "create", spatial= T, radius= 10, nDrones= nDronesPoisson, checkCross = "warning")
   DCACar <- createDCA(age1$Car)
   age0p2$Car <- cross(age0p2$Car, drones = pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p2$Car), nDrones = nFathersPoisson))
   
 } else {
-  age0p2$Mel <- cross(age0p2$Mel, droneColonies = c(age1$Mel,age2$Mel), crossPlan= "create", spatial= T, radius= 5, nDrones= nDronesPoisson, checkCross = "warning")
+  age0p2$Mel <- cross(age0p2$Mel, droneColonies = c(age1$Mel,age2$Mel), crossPlan= "create", spatial= T, radius= 10, nDrones= nDronesPoisson, checkCross = "warning")
   DCACar <- createDCA(c(age1$Car, age2$Car))
   fathersCar <-  pullDroneGroupsFromDCA(DCA = DCACar, n = nColonies(age0p2$Car), nDrones = nFathersPoisson)
   age0p2$Car <- cross(age0p2$Car, drones = fathersCar)
@@ -694,10 +770,10 @@ sampled_colonies <- list()
 for (i in 1:num_squares_per_side) {
   for (j in 1:num_squares_per_side) {
     # Define boundaries of the current square
-    x_min <- (i - 1) * 6 / num_squares_per_side
-    x_max <- i * 6 / num_squares_per_side
-    y_min <- (j - 1) * 6 / num_squares_per_side
-    y_max <- j * 6 / num_squares_per_side
+    x_min <- (i - 1) * 6.3 / num_squares_per_side
+    x_max <- i * 6.3 / num_squares_per_side
+    y_min <- (j - 1) * 6.3 / num_squares_per_side
+    y_max <- j * 6.3 / num_squares_per_side
     
     
     
@@ -712,3 +788,4 @@ for (i in 1:num_squares_per_side) {
     }
   }
 }
+getLocation(age1$Mel)[294]
