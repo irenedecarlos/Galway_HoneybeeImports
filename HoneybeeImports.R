@@ -181,11 +181,7 @@ if (burninOrScenario == "burnin") {
   
   load(file="/exports/cmvm/eddie/eb/groups/HighlanderLab/visitors/icarlos_honeybee_introgression/FounderGenomes_ThreePop_16chr.RData")
   
-  
-  # quick haplo to get the founder genomes for now
-  
-  
-  # STEP 2: Create SP object and write in the global simulation/population parameters
+
   SP <- SimParamBee$new(founderGenomes, csdChr = ifelse(nChr >= 3, 3, 1), nCsdAlleles = 128)
   SP$nWorkers <- nWorkers
   SP$nDrones <- nDrones
@@ -211,7 +207,7 @@ if (burninOrScenario == "burnin") {
                name = c("QueenHYBrit", "QueenHYEu", "FitnessBrit", "FitnessEu"))
   
   varE <- c(0.75,0.75,0.9,0.9)
-  
+  sqrt(0.1)
   # TODO: what is a reasonable environmental correlation between queen and worker effects?
   corE <- matrix(data =     c(  1.0, 0.0,  0.0, 0.0, 
                                 0.0, 1.0,  0.0, 0.0, 
