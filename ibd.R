@@ -25,11 +25,6 @@ maintainIrelandSize <- function(age0 = NULL, age1 = NULL) {
       if (nSplitNeeded>nColonies(age0splitImport)){ #check if the number of importedsplits needed is greater than the number of importedsplits we have
         age0<- c(age0swarm,age0splitImport) #add all the imported splits to age 0 object
         nSplitMelNeeded <- age0needed - nColonies(age0) # calculate the number of not imported splits needed 
-        #tendría que ser por aquí. Aqí tengo que seleccionar para quedarse los splits de apiarios con pocas colonias y vender los splits de apiarios con más colonias
-        #no tiene que ser muy dificil. Usamos las localizaciones y vemos cuales están menos repetidas, de esas cogemos los Ids y los añadimos a age0 
-        #y si quedan todavia splits por añadir, ya lo hacemos de los Ids restantes.
-        loc<-getLocation(age0)
-        
         splitMelId <- sample(getId(age0splitMel), nSplitMelNeeded) # select ids of not imported split 
         splitMelTmp <- pullColonies(age0splitMel, ID = splitMelId) # pull the splits
         splitsMel<- splitMelTmp$pulled # select pulled splits
@@ -66,27 +61,6 @@ maintainCarSize <- function(age0 = NULL, age1 = NULL) {
     return(age0)
   }
 }
-
-
-#positions of the numbers that are only repeated once
-Age0Location <- table(getLocation(age0))
-Onlyonce <- names(counts[Age0Location == 1])
-
-# Get the positions of these numbers in the original vector
-positions <- which(my_vector %in% single_occurrences)
-
-# Output the positions
-print(positions)
-
-#positions of the numbers that are only repeated three times or less
-
-my_vector <- c(1, 2, 3, 4, 5, 2, 3, 6, 7, 8, 9, 9, 10)
-counts <- table(my_vector)
-numbers_3_or_less <- names(counts[counts <= 3])
-positions <- which(my_vector %in% numbers_3_or_less)
-print(positions)
-
-
 
 
 
@@ -228,7 +202,7 @@ fathersCar <- pullDroneGroupsFromDCA(drones$Car, n = nInd(virginQueens$Car[1:Car
 queens <- list(Mel = SIMplyBee::cross(x = virginQueens$Mel[1:IrelandSize], drones = fathersMel),
                Car = SIMplyBee::cross(x = virginQueens$Car[1:CarSize], drones = fathersCar))
 
-year=2
+year=1
 
 # Start the year-loop ------------------------------------------------------------------
 #for (year in 1:nYear) {
@@ -361,9 +335,11 @@ print(Sys.time())
 # Virgin queens for splits!
 pImport<-0.3
 #estoy importando más colonias al este y menos al oeste. Lo de saply coge el numero pimport*0.10 colonias del oeste (de la cordenada x=cero hasta la dos (si queremos Y coordenanda --> coords[2])) luego se cogen las del medio (de x2 a x4) y luego este (60%)
-ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= (mapsize/3) )],nColonies(age0p1$Mel)*pImport*0.10)
-thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= (mapsize/3) & coords[1] <= (mapsize*(2/3)))],nColonies(age0p1$Mel)*pImport*0.30)
+ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= (mapsize/3) )],nColonies(age0p1$Mel)*pImport*0)
+thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= (mapsize/3) & coords[1] <= (mapsize*(2/3)))],nColonies(age0p1$Mel)*pImport*0.40)
 ses <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] > (mapsize*(2/3)))],nColonies(age0p1$Mel)*pImport*0.60)
+
+
 idstopull<-c(ten,thirty,ses)
 tmp <- (Mel = pullColonies(age0p1$Mel,ID=idstopull))
 IdImportColonies<-getId(tmp$pulled)
@@ -699,8 +675,39 @@ locationsDF <- data.frame(Location = getLocation(c(age1$Mel, age0$Mel), collapse
 ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Colony)) + 
   geom_point()
 
+################## EUCLIDEAN DISTANCES #####################################################################################
+loc1<-data.frame(Location= getLocation((age1$Mel), collapse=T))
+loc2<-data.frame(Location= getLocation((age0$Mel), collapse=T))
+x<-63.5
+y<-50.5
+has<-c(x,y)
+IdAge1 <- as.numeric(rownames(loc1))
+IdAge0 <- as.numeric(rownames(loc2))
 
+euclidean <- function(a, b) sqrt(sum((a - b)^2))
+EuclAge1 <- numeric(nrow(loc1))
+EuclAge0 <- numeric(nrow(loc2))
+for (i in 1:nrow(loc1)){
+  EuclAge1[i]<-euclidean(has,loc1[i,1:2])
+}
+for (i in 1:nrow(loc2)){
+  EuclAge0[i]<-euclidean(has,loc2[i,1:2])
+}
 
+queens = mergePops(getQueen(age1$Mel))
+IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+IBD1<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
+df<-data.frame(IdAge1,EuclAge1, IBD1)
+
+queens = mergePops(getQueen(age0$Mel))
+IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+IBD0<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
+df2<-data.frame(IdAge0,EuclAge0,IBD0)
+
+plot(df2[[2]], df2[[3]], xlab = "Euclidean Distance", ylab = "IBD", main = "IBD vs. Euclidean Distance")
+########################################################################################################################
+
+length(loc)
 a <- toc()
 loopTime <- rbind(loopTime, c(Rep, a$tic, a$toc, a$msg, (a$toc - a$tic)))
 
@@ -709,7 +716,7 @@ loopTime <- rbind(loopTime, c(Rep, a$tic, a$toc, a$msg, (a$toc - a$tic)))
 print("Saving image data")
 save.image("SpringerSimulation_import.RData")
 
-queens = mergePops(getQueen(age0$Mel))
+queens = mergePops(getQueen(age1$Mel))
 getIbdHaplo(queens)
 IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
 IBD<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
