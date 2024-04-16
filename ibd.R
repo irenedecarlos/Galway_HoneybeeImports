@@ -202,7 +202,7 @@ fathersCar <- pullDroneGroupsFromDCA(drones$Car, n = nInd(virginQueens$Car[1:Car
 queens <- list(Mel = SIMplyBee::cross(x = virginQueens$Mel[1:IrelandSize], drones = fathersMel),
                Car = SIMplyBee::cross(x = virginQueens$Car[1:CarSize], drones = fathersCar))
 
-year=1
+year=6
 
 # Start the year-loop ------------------------------------------------------------------
 #for (year in 1:nYear) {
@@ -326,21 +326,33 @@ ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Beekeepe
 print("Create virgin queens, period 1")
 print(Sys.time())
 
-#old
-#virginDonor <- list(Mel = sample.int(n = nColonies(age1$Mel), size = 1),
-#                   Car = sample.int(n = nColonies(age1$Car), size = 1))
-#virginQueens <- list(Mel = createVirginQueens(age1$Car[[virginDonor$Mel]], nInd = nColonies(age0p1$Mel)),
-# Car = createVirginQueens(age1$Car[[virginDonor$Car]], nInd = nColonies(age0p1$Car)+nColonies(age0p1$MelImport)))
+##################EUclidean#########################################################################################
+
+loc2<-data.frame(Location= getLocation((age0p1$Mel), collapse=T))
+ekis<-75
+igriega<-50
+has<-c(ekis,igriega)
+IdAge0 <- as.numeric(rownames(loc2))
+euclidean <- function(a, b) sqrt(sum((a - b)^2))
+EuclAge0 <- numeric(nrow(loc2))
+for (i in 1:nrow(loc2)){
+  EuclAge0[i]<-euclidean(has,loc2[i,1:2])
+}
+df2<-data.frame(IdAge0,EuclAge0)
+df2ord <- df2[order(df2$EuclAge0), ]
+top_100 <- unname(unlist(head(df2ord[1], 100)))
+########################################################################################################################
+
 
 # Virgin queens for splits!
-pImport<-0.3
+pImport<-0.1
 #estoy importando más colonias al este y menos al oeste. Lo de saply coge el numero pimport*0.10 colonias del oeste (de la cordenada x=cero hasta la dos (si queremos Y coordenanda --> coords[2])) luego se cogen las del medio (de x2 a x4) y luego este (60%)
-ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= (mapsize/3) )],nColonies(age0p1$Mel)*pImport*0)
-thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= (mapsize/3) & coords[1] <= (mapsize*(2/3)))],nColonies(age0p1$Mel)*pImport*0.40)
-ses <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] > (mapsize*(2/3)))],nColonies(age0p1$Mel)*pImport*0.60)
-
-
-idstopull<-c(ten,thirty,ses)
+#ten <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] <= (mapsize/3) )],nColonies(age0p1$Mel)*pImport*0)
+#thirty <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] >= (mapsize/3) & coords[1] <= (mapsize*(2/3)))],nColonies(age0p1$Mel)*pImport*0.40)
+#ses <- sample(getId(age0p1$Mel)[sapply(getLocation(age0p1$Mel), function(coords) coords[1] > (mapsize*(2/3)))],nColonies(age0p1$Mel)*pImport*0.60)
+#idstopull<-c(ten,thirty,ses)
+samphowmany<-IrelandSize*pImport
+idstopull<-sample(top_100,samphowmany)
 tmp <- (Mel = pullColonies(age0p1$Mel,ID=idstopull))
 IdImportColonies<-getId(tmp$pulled)
 age0p1 <- list(Mel = tmp$remnant,
@@ -667,7 +679,7 @@ for (subspecies in c("Mel", "Car")) {     #,"Lig"
 }
 
 
-} # Year-loop
+#} # Year-loop
 
 locationsDF <- data.frame(Location = getLocation(c(age1$Mel, age0$Mel), collapse = TRUE),
                           Colony = c(rep("Age1", nColonies(age1$Mel)),
@@ -675,11 +687,12 @@ locationsDF <- data.frame(Location = getLocation(c(age1$Mel, age0$Mel), collapse
 ggplot(data = locationsDF, aes(x = Location.1, y = Location.2, colour = Colony)) + 
   geom_point()
 
+
 ################## EUCLIDEAN DISTANCES #####################################################################################
 loc1<-data.frame(Location= getLocation((age1$Mel), collapse=T))
 loc2<-data.frame(Location= getLocation((age0$Mel), collapse=T))
-x<-63.5
-y<-50.5
+x<-75
+y<-50
 has<-c(x,y)
 IdAge1 <- as.numeric(rownames(loc1))
 IdAge0 <- as.numeric(rownames(loc2))
@@ -705,13 +718,66 @@ IBD0<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
 df2<-data.frame(IdAge0,EuclAge0,IBD0)
 
 plot(df2[[2]], df2[[3]], xlab = "Euclidean Distance", ylab = "IBD", main = "IBD vs. Euclidean Distance")
-########################################################################################################################
+
+# Scatter plot
+ggplot(df2, aes(x = EuclAge0, y = IBD0, color = IBD0)) +
+  geom_point() +
+  scale_color_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Scatter Plot of IBD vs. Euclidean Distance",
+       x = "Euclidean Distance", y = "IBD") +
+  theme_minimal()
+
+# Line plot with binning
+bin_width <- 1
+df2 %>%
+  mutate(distance_bin = cut(EuclAge0, breaks = seq(0, max(EuclAge0), bin_width))) %>%
+  group_by(distance_bin) %>%
+  summarize(avg_ibd = mean(IBD0), 
+            sd_ibd = sd(IBD0), 
+            count = n()) %>%
+  ggplot(aes(x = as.numeric(distance_bin), y = avg_ibd)) +
+  geom_line() +
+  geom_errorbar(aes(ymin = avg_ibd - sd_ibd/sqrt(count), ymax = avg_ibd + sd_ibd/sqrt(count)), width = 0.1) +
+  labs(title = "Average IBD vs. Euclidean Distance",
+       x = "Euclidean Distance", y = "Average IBD") +
+  theme_minimal()
+
+# Smoothing curve# me mola esta
+ggplot(df2, aes(x = EuclAge0, y = IBD0)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "Smoothed Curve of IBD vs. Euclidean Distance",
+       x = "Euclidean Distance", y = "IBD") +
+  theme_minimal()
+
+# 2D Density plot
+ggplot(df2, aes(x = EuclAge0, y = IBD0)) +
+  geom_density2d() +
+  labs(title = "2D Density Plot of IBD vs. Euclidean Distance",
+       x = "Euclidean Distance", y = "IBD") +
+  theme_minimal()
+
+# Hexbin plot
+ggplot(df2, aes(x = EuclAge0, y = IBD0)) +
+  geom_hex() +
+  labs(title = "Hexbin Plot of IBD vs. Euclidean Distance",
+       x = "Euclidean Distance", y = "IBD") +
+  theme_minimal()
+
+# Stacked Bar Chart
+ggplot(df2, aes(x = cut(EuclAge0, breaks = 5), fill = factor(IBD0))) +
+  geom_bar(position = "stack") +
+  labs(title = "Stacked Bar Chart of IBD vs. Euclidean Distance",
+       x = "Euclidean Distance", y = "Count") +
+  theme_minimal()
+
+#########################################################################################################################
 
 length(loc)
 a <- toc()
 loopTime <- rbind(loopTime, c(Rep, a$tic, a$toc, a$msg, (a$toc - a$tic)))
 
-} # Rep-loop
+#} # Rep-loop
 
 print("Saving image data")
 save.image("SpringerSimulation_import.RData")
