@@ -1306,7 +1306,11 @@ if (burninOrScenario == "scenario") {
     print(Sys.time())
     
     #selection on Fitness queen gv
-    
+    #remove VQ
+    failcross<-nVirginQueens(age0$Mel)
+    FVQ <- names(which(failcross == 1))
+    tmp <- pullColonies(age0$Mel, ID = FVQ)
+    age0$Mel <- tmp$remnant
     #age0
     #Mellifera
     MelBritFit<-sapply(getPheno(age0$Mel, caste = "queen"), function(x) x[1,3])#select on Mel Brit fitness
