@@ -202,7 +202,14 @@ fathersCar <- pullDroneGroupsFromDCA(drones$Car, n = nInd(virginQueens$Car[1:Car
 queens <- list(Mel = SIMplyBee::cross(x = virginQueens$Mel[1:IrelandSize], drones = fathersMel),
                Car = SIMplyBee::cross(x = virginQueens$Car[1:CarSize], drones = fathersCar))
 
-year=6
+
+queens = mergePops(queens)
+IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+IBD0<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
+eucyear2<-rep(year, length(IBD0))
+
+
+year=1
 
 # Start the year-loop ------------------------------------------------------------------
 #for (year in 1:nYear) {
@@ -253,7 +260,7 @@ if (year == 1) {
     d <- c(d, rep(h[i], num_ids))
   }
   
-  age1$Mel<-setLocation(age1$Mel, location = Map(c, abs((b+runif(length(b), min = -0.01, max = 0.01))), abs((d+runif(length(d), min = -0.01, max = 0.01)))))
+  age1$Mel<-setLocation(age1$Mel, location = Map(c, b, d))
   
   locationsDF <- data.frame(Location = getLocation(c(age1$Mel), collapse = TRUE),
                             Beekeeper = c(rep("Beekeeper1", nColonies(age1$Mel))))
@@ -297,7 +304,71 @@ age0p1 <- list(Mel = tmp$Mel$split, Car = tmp$Car$split)
 x <- sapply(getLocation(age1$Mel), function(X) X[1])
 y <- sapply(getLocation(age1$Mel), function(X) X[2])
 
-age0p1$Mel<-setLocation(age0p1$Mel, location = Map(c, abs((x+runif(length(x), min = -0.01, max = 0.01))), abs((y+runif(length(y), min = -0.1, max = 0.1)))))
+age0p1$Mel<-setLocation(age0p1$Mel, location = Map(c, x, y))
+ v<-sapply(getLocation(age0p1$Mel), function(X) X[1])
+##############################################SELLING_SPLITS#################################################################
+if (year>2){
+splitsell<-0.1
+nsplitsell<-splitsell*IrelandSize
+nsplitsell<-round(nsplitsell/3)
+
+x_values <- unlist(lapply(getLocation(age0p1$Mel), `[`, 1))
+x_location_counts <- table(x_values)
+
+sorted_xy_location_counts <- sort(x_location_counts, decreasing = TRUE)
+top_10_locations <- as.numeric(names(sorted_xy_location_counts)[1:10])
+
+
+filtered_xy_location_counts <- sorted_xy_location_counts[sorted_xy_location_counts > 1]
+sorted_filtered_counts <- sort(filtered_xy_location_counts)
+least_repeated_locations <- as.numeric(names(sorted_filtered_counts)[1:15])
+
+
+rounded_top_10_locations <- round(top_10_locations, digits = 6)
+check_match <- function(sublist, vector) {
+  rounded_sublist <- round(sublist, digits = 6)
+  any(rounded_sublist %in% vector)
+}
+matching_indices <- sapply(x_values, check_match, vector = rounded_top_10_locations)
+matching_elements <- x_values[matching_indices]
+
+# Convert the list to a data frame
+df <- data.frame(id = unlist(names(matching_elements)), number = unlist(matching_elements))
+
+# Group by number and sample 3 ids from each group
+selected_ids <- df %>%
+  group_by(number) %>%
+  sample_n(3) %>%
+  ungroup() %>%
+  pull(id)
+
+rounded_least <- round(least_repeated_locations, digits = 6)
+
+matching_indices2 <- sapply(x_values, check_match, vector = rounded_least)
+matching_elements2 <- x_values[matching_indices2]
+idleast<-names(matching_elements2)
+id<-sample(idleast,length(selected_ids))
+least<-pullColonies(age0p1$Mel,ID=id)
+least<-least$pulled
+getLocation(least)
+j <- sapply(getLocation(least), function(X) X[1])
+k <- sapply(getLocation(least), function(X) X[2])
+
+agea<-pullColonies(age0p1$Mel,ID=selected_ids)
+coc<-agea$pulled
+cac<-agea$remnant
+coc<-setLocation(coc, location = Map(c, j, k))
+
+age0p1 <- list(Mel = c(coc, cac),
+               Car = c(age0p1$Car))
+u<-sapply(getLocation(age0p1$Mel), function(X) X[1])
+}
+ 
+euclidean <- function(a, b) sqrt(sum((a - b)^2))
+
+#################################################################################################################################
+
+
 
  if (year > 1) {
   # Split all age2 colonies
@@ -310,7 +381,7 @@ age0p1$Mel<-setLocation(age0p1$Mel, location = Map(c, abs((x+runif(length(x), mi
   #Set the location of splits to a location near where the original colony is
   a <- sapply(getLocation(age2$Mel), function(X) X[1])
   b <- sapply(getLocation(age2$Mel), function(X) X[2])
-  tmp$Mel$split<-setLocation(tmp$Mel$split, location = Map(c, abs((a+runif(length(a), min = -0.1, max = 0.1))), abs((b+runif(length(b), min = -0.1, max = 0.1)))))
+  tmp$Mel$split<-setLocation(tmp$Mel$split, location = Map(c, a, b))
   # The queens of the splits are 0 years old
   age0p1 <- list(Mel = c(age0p1$Mel, tmp$Mel$split),
                  Car = c(age0p1$Car, tmp$Car$split))
@@ -717,8 +788,6 @@ IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMe
 IBD0<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
 df2<-data.frame(IdAge0,EuclAge0,IBD0)
 
-plot(df2[[2]], df2[[3]], xlab = "Euclidean Distance", ylab = "IBD", main = "IBD vs. Euclidean Distance")
-
 # Scatter plot
 ggplot(df2, aes(x = EuclAge0, y = IBD0, color = IBD0)) +
   geom_point() +
@@ -726,6 +795,8 @@ ggplot(df2, aes(x = EuclAge0, y = IBD0, color = IBD0)) +
   labs(title = "Scatter Plot of IBD vs. Euclidean Distance",
        x = "Euclidean Distance", y = "IBD") +
   theme_minimal()
+#shitty plot
+plot(df2[[2]], df2[[3]], xlab = "Euclidean Distance", ylab = "IBD", main = "IBD vs. Euclidean Distance")
 
 # Line plot with binning
 bin_width <- 1
@@ -862,3 +933,93 @@ for (i in 1:num_squares_per_side) {
   }
 }
 getLocation(age1$Mel)[294]
+
+
+
+
+
+loc1<-data.frame(Location= getLocation((age1$Mel), collapse=T))
+loc2<-data.frame(Location= getLocation((age0$Mel), collapse=T))
+x<-50
+y<-15
+has<-c(x,y)
+IdAge1 <- as.numeric(rownames(loc1))
+IdAge0 <- as.numeric(rownames(loc2))
+
+euclidean <- function(a, b) sqrt(sum((a - b)^2))
+EuclAge1 <- numeric(nrow(loc1))
+EuclAge0 <- numeric(nrow(loc2))
+for (i in 1:nrow(loc1)){
+  EuclAge1[i]<-euclidean(has,loc1[i,1:2])
+}
+for (i in 1:nrow(loc2)){
+  EuclAge0[i]<-euclidean(has,loc2[i,1:2])
+}
+
+queens = mergePops(getQueen(age1$Mel))
+IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+IBD1<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
+eucyear<-rep(year, length(IBD1))
+if (year==11){
+  Eucdf<-data.frame(IdAge1,EuclAge1, IBD1,eucyear)
+} else {
+  Eucdfnow<-data.frame(IdAge1,EuclAge1, IBD1,eucyear)
+  Eucdf<-rbind(Eucdf,Eucdfnow)
+}
+
+
+queens = mergePops(getQueen(age0$Mel))
+IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+IBD0<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
+eucyear2<-rep(year, length(IBD0))
+
+if (year==11){
+  Eucdf2<-data.frame(IdAge0,EuclAge0,IBD0,eucyear2)
+} else {
+  Eucdfnow2<-data.frame(IdAge0,EuclAge0,IBD0,eucyear2)
+  
+}
+
+
+# Calculate the Euclidean distance between the colonies and the apiaries    
+loc1<-data.frame(Location= getLocation((age1$Mel), collapse=T))
+loc2<-data.frame(Location= getLocation((age0$Mel), collapse=T))
+x<-50
+y<-15
+has<-c(x,y)
+IdAge1 <- as.numeric(rownames(loc1))
+IdAge0 <- as.numeric(rownames(loc2))
+
+euclidean <- function(a, b) sqrt(sum((a - b)^2))
+EuclAge1 <- numeric(nrow(loc1))
+EuclAge0 <- numeric(nrow(loc2))
+for (i in 1:nrow(loc1)){
+  EuclAge1[i]<-euclidean(has,loc1[i,1:2])
+}
+for (i in 1:nrow(loc2)){
+  EuclAge0[i]<-euclidean(has,loc2[i,1:2])
+}
+
+queens = mergePops(getQueen(age1$Mel))
+IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+IBD1<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
+eucyear<-rep(year, length(IBD1))
+if (year==21){
+  Eucdf1<-data.frame(IdAge1,EuclAge1, IBD1,eucyear)
+} else {
+  Eucdfnow1<-data.frame(IdAge1,EuclAge1, IBD1,eucyear)
+  Eucdf1<-rbind(Eucdf1,Eucdfnow1)
+}
+
+
+queens = mergePops(getQueen(age0$Mel))
+IBDh<-apply(getIbdHaplo(queens),MARGIN = 1, FUN =  function(X) sum(X %in% 1:(nMelN*2)/length(X)))
+IBD0<-sapply(seq(1,length(IBDh),2), FUN = function(z) sum(IBDh[z:(z+1)])/2)
+eucyear2<-rep(year, length(IBD0))
+
+if (year==21){
+  Eucdf0<-data.frame(IdAge0,EuclAge0,IBD0,eucyear2)
+} else {
+  Eucdfnow0<-data.frame(IdAge0,EuclAge0,IBD0,eucyear2)
+  Eucdf0<-rbind(Eucdf0,Eucdfnow0)
+}
